@@ -5,7 +5,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+//TODO: is it a functional interface?
+@FunctionalInterface
 public interface JWTKeyResolver {
 
-    Optional<byte[]> resolve(Supplier<Map<String,String>> tokenClaims);
+    Optional<byte[]> resolve(Map<String,Object> tokenClaims);
 }
