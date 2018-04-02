@@ -35,7 +35,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(map.get("kid"))
                         .filter(String.class::isInstance)
@@ -65,7 +65,7 @@ class JWTAuthenticatorTests {
                 .compact();
 
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.of(hmacSecret.getBytes()))
                 .build();
@@ -87,7 +87,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.HS256, "secret".getBytes())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl.Builder()
+        JwtAuthenticator sut = new JwtAuthenticatorImpl.Builder()
                 .keyResolver(map -> Optional.of("otherSecret".getBytes()))
                 .build();
 
@@ -107,7 +107,7 @@ class JWTAuthenticatorTests {
                 .compact();
 
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(map.get("kid"))
                         .filter(String.class::isInstance)
@@ -134,7 +134,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.of(keys.getPublic().getEncoded()))
                 .build();
@@ -161,7 +161,7 @@ class JWTAuthenticatorTests {
 //        JWTKeyRepository mockRepo = Mockito.mock(JWTKeyRepository.class);
 //        Mockito.when(mockRepo.getKey(Mockito.anyString())).thenReturn(keys.getPublic().getEncoded());
 //
-//        JWTAuthenticatorImpl sut = new JWTAuthenticatorImpl(mockRepo);
+//        JwtAuthenticatorImpl sut = new JwtAuthenticatorImpl(mockRepo);
 //        Profile profile = sut.authenticate(token);
 //
 //        Assertions.assertEquals("Tenant1", profile.getTenant());
@@ -178,7 +178,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.empty())
                 .build();
@@ -196,7 +196,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(map.get("kid"))
                         .filter(String.class::isInstance)
@@ -225,7 +225,7 @@ class JWTAuthenticatorTests {
             throw new RuntimeException(e);
         }
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(map.get("kid"))
                         .filter(String.class::isInstance)
@@ -257,7 +257,7 @@ class JWTAuthenticatorTests {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(map.get("kid"))
                         .filter(String.class::isInstance)
@@ -282,7 +282,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.of(keys.getPublic().getEncoded()))
                 .build();
@@ -301,7 +301,7 @@ class JWTAuthenticatorTests {
                 .setSubject("1")
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(map.get("kid"))
                         .filter(String.class::isInstance)
@@ -323,7 +323,7 @@ class JWTAuthenticatorTests {
                 .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
                 .compact();
 
-        JWTAuthenticator sut = new JWTAuthenticatorImpl
+        JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
                 .keyResolver(map -> Optional.ofNullable(null))
                 .build();
