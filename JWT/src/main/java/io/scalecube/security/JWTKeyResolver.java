@@ -1,11 +1,10 @@
-package io.scalecube.scurity;
+package io.scalecube.security;
 
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
-//TODO: is it a functional interface?
+//TODO: add javadoc
 @FunctionalInterface
 public interface JWTKeyResolver {
 

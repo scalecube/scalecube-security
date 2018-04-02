@@ -1,23 +1,20 @@
-package io.scalecube.scurity;
+package io.scalecube.security;
 
 import io.jsonwebtoken.*;
 
 import javax.crypto.spec.SecretKeySpec;
-import javax.swing.text.html.Option;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JWTAuthenticatorImpl implements JWTAuthenticator {
 
-    //TODO: lazy installation of the key factory?
     private static final Map<String, Supplier<KeyFactory>> keyFactorySupplier;
 
     static {
@@ -62,7 +59,6 @@ public class JWTAuthenticatorImpl implements JWTAuthenticator {
         this.keyResolver = keyResolver;
     }
 
-    // TODO: can i improve this ugly anonymous class impl?
     public Profile authenticate(String token) {
         Jws<Claims> claims = Jwts.parser().setSigningKeyResolver(new SigningKeyResolver() {
 
@@ -74,7 +70,7 @@ public class JWTAuthenticatorImpl implements JWTAuthenticator {
                 }
 
                 SignatureAlgorithm algorithm = SignatureAlgorithm.forName(header.getAlgorithm());
-                JWTKeyResolver actualResolver = keyResolver.get(); //TODO: return default resolver if not exists
+                JWTKeyResolver actualResolver = keyResolver.get();
 
                 Map<String, Object> allClaims = Stream.of(claims, (Map<String, Object>) header)
                         .map(Map::entrySet)
@@ -87,7 +83,7 @@ public class JWTAuthenticatorImpl implements JWTAuthenticator {
                     return null;
                 }
 
-                //TODO: provide ability to provide algorithm in builder, fall back to retrieving from token iself?
+                //TODO: should algo be provided from builder or just inferred from token?
                 if (algorithm.isHmac()) {
                     return new SecretKeySpec(keyBytes.get(), algorithm.getJcaName());
                 }
@@ -109,7 +105,7 @@ public class JWTAuthenticatorImpl implements JWTAuthenticator {
 
             @Override
             public Key resolveSigningKey(JwsHeader header, String plaintext) {
-                throw new UnsupportedOperationException(); //TODO: check how to support this method?
+                throw new UnsupportedOperationException(); // Will only occur in case the token isn't json.
             }
         }).parseClaimsJws(token);
 

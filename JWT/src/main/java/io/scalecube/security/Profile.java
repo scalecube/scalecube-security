@@ -1,11 +1,11 @@
-package io.scalecube.scurity;
+package io.scalecube.security;
 
 import java.util.Map;
 
 public class Profile {
 
     //TODO: check google profile returned from
-    ////
+    //// TODO: do we want to have an optionals here?
     private String id;
     final String tenant;
     private String email;
@@ -13,7 +13,7 @@ public class Profile {
     private String name;
     private String familyName;
     private String givenName;
-    private Map<String, String> claims;
+    private Map<String, Object> claims;
     ////
     final String userName;
     final String userId;
@@ -37,9 +37,3 @@ public class Profile {
     }
 }
 
-
-/*public*/ class Session{
-
-    public Profile profile;
-
-}

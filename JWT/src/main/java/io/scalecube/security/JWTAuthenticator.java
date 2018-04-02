@@ -1,4 +1,4 @@
-package io.scalecube.scurity;
+package io.scalecube.security;
 
 public interface JWTAuthenticator {
 
