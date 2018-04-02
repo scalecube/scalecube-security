@@ -9,6 +9,7 @@ import io.jsonwebtoken.SignatureException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
@@ -19,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-class JWTAuthenticatorTests {
+class JwtAuthenticatorTests {
 
     @Test
     void authenticate_authenticateUsingKidHeaderProperty_authenticationSuccess() {
@@ -41,7 +42,7 @@ class JWTAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(hmacSecret.getBytes());
+                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256"));
                         }))
                 .build();
 
@@ -67,7 +68,7 @@ class JWTAuthenticatorTests {
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
-                .keyResolver(map -> Optional.of(hmacSecret.getBytes()))
+                .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256")))
                 .build();
 
         Profile profile = sut.authenticate(token);
@@ -88,7 +89,7 @@ class JWTAuthenticatorTests {
                 .compact();
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl.Builder()
-                .keyResolver(map -> Optional.of("otherSecret".getBytes()))
+                .keyResolver(map -> Optional.of(new SecretKeySpec("otherSecret".getBytes(), "HMACSHA256")))
                 .build();
 
         Assertions.assertThrows(SignatureException.class, () -> sut.authenticate(token));
@@ -113,13 +114,11 @@ class JWTAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(hmacSecret.getBytes());
+                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256"));
                         }))
                 .build();
 
         Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
-
-
     }
 
     @Test
@@ -136,7 +135,7 @@ class JWTAuthenticatorTests {
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
-                .keyResolver(map -> Optional.of(keys.getPublic().getEncoded()))
+                .keyResolver(map -> Optional.of(keys.getPublic()))
                 .build();
 
         Profile profile = sut.authenticate(token);
@@ -149,24 +148,6 @@ class JWTAuthenticatorTests {
     @Test
     void authenticate_createTokenAndValidateEC_authenticationSuccess() {
         //TODO
-//        KeyPair keys = generateECKeys();
-//
-//        Map<String, Object> customClaims = new HashMap<>();
-//        customClaims.put("name", "Trader1");
-//
-//        String token = Jwts.builder().setAudience("Tenant1").setSubject("1")
-//                .setHeaderParam("kid", 1)
-//                .addClaims(customClaims).signWith(SignatureAlgorithm.ES256, keys.getPrivate()).compact();
-//
-//        JWTKeyRepository mockRepo = Mockito.mock(JWTKeyRepository.class);
-//        Mockito.when(mockRepo.getKey(Mockito.anyString())).thenReturn(keys.getPublic().getEncoded());
-//
-//        JwtAuthenticatorImpl sut = new JwtAuthenticatorImpl(mockRepo);
-//        Profile profile = sut.authenticate(token);
-//
-//        Assertions.assertEquals("Tenant1", profile.getTenant());
-//        Assertions.assertEquals("Trader1", profile.getUserName());
-//        Assertions.assertEquals("1", profile.getUserId());
     }
 
     @Test
@@ -202,7 +183,7 @@ class JWTAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of("secret".getBytes());
+                            return Optional.of(new SecretKeySpec("secret".getBytes(), "HMACSHA256"));
                         }))
                 .build();
 
@@ -231,7 +212,8 @@ class JWTAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(hmacSecret.getBytes());
+                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256"));
+
                         }))
                 .build();
 
@@ -263,7 +245,7 @@ class JWTAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(keyPair.getPublic().getEncoded());
+                            return Optional.of(keyPair.getPublic());
                         }))
                 .build();
 
@@ -284,7 +266,7 @@ class JWTAuthenticatorTests {
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
-                .keyResolver(map -> Optional.of(keys.getPublic().getEncoded()))
+                .keyResolver(map -> Optional.of(keys.getPublic()))
                 .build();
 
         Profile profile = sut.authenticate(token);
@@ -329,7 +311,6 @@ class JWTAuthenticatorTests {
                 .build();
 
         Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
-
     }
 
     private KeyPair generateRSAKeys() {
