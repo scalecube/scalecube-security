@@ -22,20 +22,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public class JWTAuthenticatorTests {
+class JWTAuthenticatorTests {
 
     @Test
-    public void autenticate_autenticateUsingKidHeaderProperty_authenticationSuccess() {
+    void authenticate_authenticateUsingKidHeaderProperty_authenticationSuccess() {
         String hmacSecret = "secert";
 
         Map<String, Object> customClaims = new HashMap<>();
         customClaims.put("name", "Trader1");
 
-        String token = Jwts.builder().setAudience("Tenant1").setSubject("1").setHeaderParam("kid", "5")
+        String token = Jwts.builder().setAudience("Tenant1")
+                .setSubject("1")
+                .setHeaderParam("kid", "5")
                 .addClaims(customClaims)
                 .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
                 .compact();
-
 
         JWTAuthenticator sut = new JWTAuthenticatorImpl
                 .Builder()
@@ -56,7 +57,7 @@ public class JWTAuthenticatorTests {
     }
 
     @Test
-    public void autenticate_createTokenAndAuthenticateHMAC_authenticationSuccess() {
+    void authenticate_createTokenAndAuthenticateHMAC_authenticationSuccess() {
         String hmacSecret = "secert";
 
         Map<String, Object> customClaims = new HashMap<>();
@@ -81,7 +82,7 @@ public class JWTAuthenticatorTests {
     }
 
     @Test
-    public void autenticate_validTokenInvalidHMACSecret_authenticationFailedExceptionThrown() {
+    void authenticate_validTokenInvalidHMACSecret_authenticationFailedExceptionThrown() {
         Map<String, Object> customClaims = new HashMap<>();
         customClaims.put("name", "trader1");
 
@@ -97,9 +98,8 @@ public class JWTAuthenticatorTests {
         Assertions.assertThrows(SignatureException.class, () -> sut.authenticate(token));
     }
 
-
     @Test
-    public void autenticate_autenticateUsingKidHeaderPropertyKidIsMissing_authenticationFailsExceptionThrown() {
+    void authenticate_authenticateUsingKidHeaderPropertyKidIsMissing_authenticationFailsExceptionThrown() {
         String hmacSecret = "secert";
 
         Map<String, Object> customClaims = new HashMap<>();
@@ -127,7 +127,7 @@ public class JWTAuthenticatorTests {
     }
 
     @Test
-    public void autenticate_createTokenAndValidateRSA_authenticationSuccess() {
+    void authenticate_createTokenAndValidateRSA_authenticationSuccess() {
         KeyPair keys = generateRSAKeys();
 
         Map<String, Object> customClaims = new HashMap<>();
@@ -151,7 +151,7 @@ public class JWTAuthenticatorTests {
     }
 
     @Test
-    public void autenticate_createTokenAndValidateEC_authenticationSuccess() {
+    void authenticate_createTokenAndValidateEC_authenticationSuccess() {
         //TODO
 //        KeyPair keys = generateECKeys();
 //
@@ -173,9 +173,8 @@ public class JWTAuthenticatorTests {
 //        Assertions.assertEquals("1", profile.getUserId());
     }
 
-
     @Test
-    public void autenticate_createTokenAndValidateKeyResolverReturnsEmptyOptional_authenticationFailsExceptionThrown() {
+    void authenticate_createTokenAndValidateKeyResolverReturnsEmptyOptional_authenticationFailsExceptionThrown() {
         KeyPair keys = generateRSAKeys();
 
 
@@ -191,19 +190,35 @@ public class JWTAuthenticatorTests {
         Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
     }
 
-
     @Test
-    public void autenticate_createTokenAndValidateWrongKeyForAlgorithm_authenticationFails() {
-        //TODO: Send HMAC key to RSA Token (and vice versa)
+    void authenticate_createTokenAndValidateWrongKeyForAlgorithm_authenticationFailsExceptionThrown() {
+        KeyPair keys = generateRSAKeys();
+
+        String token = Jwts.builder().setAudience("Tenant1")
+                .setSubject("1")
+                .setHeaderParam("kid", "5")
+                .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+                .compact();
+
+        JWTAuthenticator sut = new JWTAuthenticatorImpl
+                .Builder()
+                .keyResolver(map -> Optional.ofNullable(map.get("kid"))
+                        .filter(String.class::isInstance)
+                        .flatMap(s -> {
+                            //Safe to cast to string, use the kid property to fetch the key
+                            return Optional.of("secret".getBytes());
+                        }))
+                .build();
+
+        Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
     }
 
     @Test
-    public void autenticate_hmacTokenCreatedFromDifferentLibrary_authenticationSuccess() {
-        //TODO: use auth.0 client library to generate the token and validate
+    void authenticate_hmacTokenCreatedFromDifferentLibrary_authenticationSuccess() {
+
         String hmacSecret = "secret";
         String token;
         try {
-
             token = JWT.create()
                     .withAudience("Tenant1")
                     .withSubject("1")
@@ -232,12 +247,11 @@ public class JWTAuthenticatorTests {
     }
 
     @Test
-    public void autenticate_RSATokenCreatedFromDifferentLibrary_authenticationSuccess() {
-        //TODO: use auth.0 client library to generate the token and validate
-        KeyPair keyPair =generateRSAKeys();
+    void authenticate_RSATokenCreatedFromDifferentLibrary_authenticationSuccess() {
+
+        KeyPair keyPair = generateRSAKeys();
         String token;
         try {
-
             token = JWT.create()
                     .withAudience("Tenant1")
                     .withSubject("1")
@@ -265,8 +279,61 @@ public class JWTAuthenticatorTests {
     }
 
     @Test
-    public void autenticate_missingClaimsInToken_authenticationSuccessProfilePropertyIsMissing() {
-        //TODO: missing profile property in token claim
+    void authenticate_missingClaimsInToken_authenticationSuccessProfilePropertyIsMissing() {
+        KeyPair keys = generateRSAKeys();
+
+        String token = Jwts.builder().setAudience("Tenant1").setSubject("1").setHeaderParam("kid", "5")
+                .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+                .compact();
+
+        JWTAuthenticator sut = new JWTAuthenticatorImpl
+                .Builder()
+                .keyResolver(map -> Optional.of(keys.getPublic().getEncoded()))
+                .build();
+
+        Profile profile = sut.authenticate(token);
+
+        Assertions.assertEquals("Tenant1", profile.getTenant());
+        Assertions.assertEquals(null, profile.getUserName());
+        Assertions.assertEquals("1", profile.getUserId());
+    }
+
+    @Test
+    void authenticate_unsignedToken_authenticationFailsExceptionThrown() {
+
+        String token = Jwts.builder().setAudience("Tenant1")
+                .setSubject("1")
+                .compact();
+
+        JWTAuthenticator sut = new JWTAuthenticatorImpl
+                .Builder()
+                .keyResolver(map -> Optional.ofNullable(map.get("kid"))
+                        .filter(String.class::isInstance)
+                        .flatMap(s -> {
+                            //Safe to cast to string, use the kid property to fetch the key
+                            return Optional.ofNullable(null);
+                        }))
+                .build();
+
+        Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
+    }
+
+    @Test
+    void authenticate_keyResolverRetrunNulls_authenticationFailsExceptionThrown() {
+
+        KeyPair keys = generateRSAKeys();
+
+        String token = Jwts.builder().setAudience("Tenant1").setSubject("1").setHeaderParam("kid", "5")
+                .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+                .compact();
+
+        JWTAuthenticator sut = new JWTAuthenticatorImpl
+                .Builder()
+                .keyResolver(map -> Optional.ofNullable(null))
+                .build();
+
+        Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
+
     }
 
     private KeyPair generateRSAKeys() {
