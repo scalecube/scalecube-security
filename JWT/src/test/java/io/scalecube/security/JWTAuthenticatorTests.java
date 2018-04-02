@@ -48,7 +48,7 @@ class JWTAuthenticatorTests {
         Profile profile = sut.authenticate(token);
 
         Assertions.assertEquals("Tenant1", profile.getTenant());
-        Assertions.assertEquals("Trader1", profile.getUserName());
+        Assertions.assertEquals("Trader1", profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
 
     }
@@ -74,7 +74,7 @@ class JWTAuthenticatorTests {
         Profile profile = sut.authenticate(token);
 
         Assertions.assertEquals("Tenant1", profile.getTenant());
-        Assertions.assertEquals("Trader1", profile.getUserName());
+        Assertions.assertEquals("Trader1", profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
     }
 
@@ -143,7 +143,7 @@ class JWTAuthenticatorTests {
         Profile profile = sut.authenticate(token);
 
         Assertions.assertEquals("Tenant1", profile.getTenant());
-        Assertions.assertEquals("Trader1", profile.getUserName());
+        Assertions.assertEquals("Trader1", profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
     }
 
@@ -239,7 +239,7 @@ class JWTAuthenticatorTests {
         Profile profile = sut.authenticate(token);
 
         Assertions.assertEquals("Tenant1", profile.getTenant());
-        Assertions.assertEquals("Trader1", profile.getUserName());
+        Assertions.assertEquals("Trader1", profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
     }
 
@@ -271,7 +271,7 @@ class JWTAuthenticatorTests {
         Profile profile = sut.authenticate(token);
 
         Assertions.assertEquals("Tenant1", profile.getTenant());
-        Assertions.assertEquals("Trader1", profile.getUserName());
+        Assertions.assertEquals("Trader1", profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
     }
 
@@ -291,7 +291,7 @@ class JWTAuthenticatorTests {
         Profile profile = sut.authenticate(token);
 
         Assertions.assertEquals("Tenant1", profile.getTenant());
-        Assertions.assertEquals(null, profile.getUserName());
+        Assertions.assertEquals(null, profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
     }
 

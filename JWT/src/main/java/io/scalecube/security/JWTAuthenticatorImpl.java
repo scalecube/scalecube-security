@@ -109,8 +109,6 @@ public class JWTAuthenticatorImpl implements JWTAuthenticator {
             }
         }).parseClaimsJws(token);
 
-        Claims claimBody = claims.getBody();
-
-        return new Profile(claimBody.get("name", String.class), claimBody.getSubject(), claimBody.getAudience());
+        return new Profile(claims.getBody());
     }
 }
