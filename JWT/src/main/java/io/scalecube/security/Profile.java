@@ -4,30 +4,40 @@ import java.util.Map;
 
 public class Profile {
 
+    private final String userId;
+    private final String tenant;
+    private final String email;
+    private final Boolean isEmaildVerified;
+    private final String name;
+    private final String familyName;
+    private final String givenName;
     private final Map<String, Object> claims;
 
-    public Profile(Map<String, Object> claims) {
+    public Profile(String userId, String tenant, String email, Boolean isEmaildVerified, String name, String familyName, String givenName, Map<String, Object> claims) {
+        this.userId = userId;
+        this.tenant = tenant;
+        this.email = email;
+        this.isEmaildVerified = isEmaildVerified;
+        this.name = name;
+        this.familyName = familyName;
+        this.givenName = givenName;
         this.claims = claims;
     }
 
-    public String getUserId() { return fetchFromMap("sub",String.class); }
+    public String getUserId() { return userId; }
 
-    public String getTenant() { return fetchFromMap("aud",String.class);} //return tenant; }
+    public String getTenant() { return tenant; }
 
-    public String getEmail()  {  return fetchFromMap("email",String.class); }//return email; }
+    public String getEmail()  {  return email; }
 
-    public boolean isEmailVerified() {return fetchFromMap("email_verified",boolean.class); } //return emailVerified; }
+    public boolean isEmailVerified() {return isEmaildVerified; }
 
-    public String getName() { return fetchFromMap("name",String.class); }//return name; }
+    public String getName() { return name; }
 
-    public String getFamilyName() { return fetchFromMap("family_name",String.class);}//return familyName; }
+    public String getFamilyName() { return familyName; }
 
-    public String getGivenName() {return fetchFromMap("given_name",String.class); }//return givenName; }
+    public String getGivenName() {return givenName; }
 
     public Map<String, Object> getClaims() { return claims; }
-
-    private <T> T fetchFromMap(String key, Class<T> type) {
-        return type.cast(claims.get(key));
-    }
 }
 

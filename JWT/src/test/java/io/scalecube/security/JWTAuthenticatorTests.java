@@ -50,7 +50,6 @@ class JWTAuthenticatorTests {
         Assertions.assertEquals("Tenant1", profile.getTenant());
         Assertions.assertEquals("Trader1", profile.getName());
         Assertions.assertEquals("1", profile.getUserId());
-
     }
 
     @Test
