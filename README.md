@@ -1,5 +1,7 @@
 # scalecube-security
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/e110b177bb1b4f6aaf86a4e77fc795c5)](https://app.codacy.com/app/ScaleCube/scalecube-security?utm_source=github.com&utm_medium=referral&utm_content=scalecube/scalecube-security&utm_campaign=badger)
+
 # JWT authentication basic usage
 
 Given a JWT we would like to authenticate it and extract its claims:
