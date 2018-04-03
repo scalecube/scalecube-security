@@ -22,6 +22,7 @@ import java.util.Optional;
 
 class JwtAuthenticatorTests {
 
+  private static final String HMAC_SHA_256 = "HMACSHA256";
     @Test
     void authenticate_authenticateUsingKidHeaderProperty_authenticationSuccess() {
         String hmacSecret = "secert";
@@ -38,12 +39,7 @@ class JwtAuthenticatorTests {
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
-                .keyResolver(map -> Optional.ofNullable(map.get("kid"))
-                        .filter(String.class::isInstance)
-                        .flatMap(s -> {
-                            //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256"));
-                        }))
+                .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256)))
                 .build();
 
         Profile profile = sut.authenticate(token);
@@ -68,7 +64,7 @@ class JwtAuthenticatorTests {
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl
                 .Builder()
-                .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256")))
+                .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256)))
                 .build();
 
         Profile profile = sut.authenticate(token);
@@ -89,7 +85,7 @@ class JwtAuthenticatorTests {
                 .compact();
 
         JwtAuthenticator sut = new JwtAuthenticatorImpl.Builder()
-                .keyResolver(map -> Optional.of(new SecretKeySpec("otherSecret".getBytes(), "HMACSHA256")))
+                .keyResolver(map -> Optional.of(new SecretKeySpec("otherSecret".getBytes(), HMAC_SHA_256)))
                 .build();
 
         Assertions.assertThrows(SignatureException.class, () -> sut.authenticate(token));
@@ -114,7 +110,7 @@ class JwtAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256"));
+                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256));
                         }))
                 .build();
 
@@ -183,7 +179,7 @@ class JwtAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(new SecretKeySpec("secret".getBytes(), "HMACSHA256"));
+                            return Optional.of(new SecretKeySpec("secret".getBytes(), HMAC_SHA_256));
                         }))
                 .build();
 
@@ -212,7 +208,7 @@ class JwtAuthenticatorTests {
                         .filter(String.class::isInstance)
                         .flatMap(s -> {
                             //Safe to cast to string, use the kid property to fetch the key
-                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), "HMACSHA256"));
+                            return Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256));
 
                         }))
                 .build();
@@ -312,6 +308,22 @@ class JwtAuthenticatorTests {
 
         Assertions.assertThrows(Exception.class, () -> sut.authenticate(token));
     }
+
+  @Test
+  void authenticate_noKeyResolverIsProvided_authenticationFailsExceptionThrown() {
+    KeyPair keys = generateRSAKeys();
+
+    String token = Jwts.builder().setAudience("Tenant1").setSubject("1")
+        .setHeaderParam("kid", "5")
+        .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+        .compact();
+
+    JwtAuthenticator sut = new JwtAuthenticatorImpl
+        .Builder()
+        .build();
+
+    Assertions.assertThrows(IllegalArgumentException.class, () -> sut.authenticate(token));
+  }
 
     private KeyPair generateRSAKeys() {
         try {

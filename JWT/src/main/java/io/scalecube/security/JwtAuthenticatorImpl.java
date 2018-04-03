@@ -16,7 +16,7 @@ public class JwtAuthenticatorImpl implements JwtAuthenticator {
   }
 
   /**
-   * Authenticate an JWT token using provided JwtKeyResolver.
+   * Authenticate a JWT token using the provided {@link JwtKeyResolver}.
    */
   public Profile authenticate(String token) {
 
