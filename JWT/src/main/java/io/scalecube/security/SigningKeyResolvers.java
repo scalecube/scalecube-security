@@ -18,28 +18,15 @@ public class SigningKeyResolvers {
 
     return new SigningKeyResolver() {
 
-      private Key retreiveKey(JwsHeader header, Claims claims) {
-
-        // No key resolver provided, return null to signal no key
-        if (!keyResolver.isPresent()) {
-          return null;
-        }
-
-        JwtKeyResolver actualResolver = keyResolver.get();
-
-        Map<String, Object> tokenProperties = Stream.of(claims, (Map<String, Object>) header)
-            .map(Map::entrySet)
-            .flatMap(Collection::stream)
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        Optional<Key> jwtKey = actualResolver.resolve(tokenProperties);
-
-        return jwtKey.orElse(null);
-      }
-
       @Override
       public Key resolveSigningKey(JwsHeader header, Claims claims) {
-        return retreiveKey(header, claims);
+        return keyResolver.flatMap(actualResolver -> {
+          Map<String, Object> tokenProperties = Stream.of(claims, (Map<String, Object>) header)
+              .map(Map::entrySet)
+              .flatMap(Collection::stream)
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+          return actualResolver.resolve(tokenProperties);
+        }).orElse(null);
       }
 
       @Override
