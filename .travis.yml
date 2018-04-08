@@ -3,37 +3,20 @@ jdk:
 - oraclejdk8
 
 before_install:
-- openssl aes-256-cbc -K {key} -iv {iv}
-  -in {secrets-in} -out {secrets-out} -d
-- git remote set-url origin git@github.com:scalecube/scalecube-security.git
-- pushd /tmp
-- tar -xvf secrets.tar
-- eval "$(ssh-agent -s)"
-- chmod 600 tmp/io-scalecube-ci_rsa
-- ssh-add tmp/io-scalecube-ci_rsa
-- ssh -T git@github.com | true
-- gpg2 --fast-import tmp/all.gpg
-- echo -e "trust\n5\ny\n" | gpg2 --command-fd 0 --edit-key $GPG_KEY
-- gpg2 --list-secret-keys --with-colon | grep sec
-- git config --global user.email "io.scalecube.ci@gmail.com"
-- git config --global user.name "io-scalecube-ci"
-- git config --global commit.gpgSign false
-- git config --global gpg.program $(which gpg2)
-- git config --global user.signingKey $GPG_KEY
-- popd
-install: true
+- "./src/main/scripts/ci/before-install.sh"
+  after_success:
+  - java -jar ~/codacy-coverage-reporter-assembly.jar -l Java -r ./target/site/jacoco/jacoco.xml
 script:
 - mvn -version
 before_deploy:
 - git checkout $TRAVIS_BRANCH
 deploy:
 - provider: script
-  script: mvn deploy -DskipTests=true -Dmaven.javadoc.skip=true -B -V -s travis-settings.xml
-  on:
-    branch: develop
+        script: mvn -P release deploy -DskipTests=true -B -V -s travis-settings.xml
+        on:
+                branch: develop
 - provider: script
-  script: mvn release:prepare release:perform -DautoVersionSubmodules=true -DscmCommentPrefix='[skip
-    ci] [maven-release-plugin]' -Darguments="-DskipTests=true -Dmaven.javadoc.skip=true"
-    -B -V -s travis-settings.xml
-  on:
-    branch: master
+        script:
+        - "./src/main/scripts/cd/deploy.sh"
+        on:
+                branch: master
