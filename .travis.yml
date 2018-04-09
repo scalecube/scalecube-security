@@ -4,8 +4,8 @@ jdk:
 
 before_install:
 - "./src/main/scripts/ci/before-install.sh"
-  after_success:
-  - java -jar ~/codacy-coverage-reporter-assembly.jar -l Java -r ./target/site/jacoco/jacoco.xml
+after_success:
+- java -jar ~/codacy-coverage-reporter-assembly.jar -l Java -r ./target/site/jacoco/jacoco.xml
 script:
 - mvn -version
 before_deploy:
