@@ -12,11 +12,11 @@ before_deploy:
 - git checkout $TRAVIS_BRANCH
 deploy:
 - provider: script
-        script: mvn -P release deploy -DskipTests=true -B -V -s travis-settings.xml
-        on:
-                branch: develop
+  script: mvn -P release deploy -DskipTests=true -B -V -s travis-settings.xml
+  on:
+    branch: develop
 - provider: script
-        script:
-        - "./src/main/scripts/cd/deploy.sh"
-        on:
-                branch: master
+  script:
+    - "./src/main/scripts/cd/deploy.sh"
+  on:
+    branch: master
