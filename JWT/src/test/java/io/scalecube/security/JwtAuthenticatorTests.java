@@ -301,7 +301,7 @@ class JwtAuthenticatorTests {
   }
 
   @Test
-  void authenticate_noKeyResolverIsProvided_authenticationFailsExceptionThrown() throws NoSuchAlgorithmException {
+  public void authenticateNoKeyResolverIsProvidedAuthenticationFailsExceptionThrown() throws NoSuchAlgorithmException {
     KeyPair keys = generateRSAKeys();
 
     String token = Jwts.builder().setAudience("Tenant1").setSubject("1")
