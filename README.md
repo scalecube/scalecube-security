@@ -26,3 +26,4 @@ JwtAuthenticator authenticator = new JwtAuthenticatorImpl
                 
 Profile profile = authenticator.authenticate(token)
 ```
+ 
