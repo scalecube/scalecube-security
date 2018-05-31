@@ -25,4 +25,4 @@ JwtAuthenticator authenticator = new JwtAuthenticatorImpl
                 .build();
                 
 Profile profile = authenticator.authenticate(token)
-```
+``` 
