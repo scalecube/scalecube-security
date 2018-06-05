@@ -6,10 +6,32 @@
     <artifactId>scalecube-security-parent</artifactId>
     <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-	
-	<modules>
-        <module>JWT</module>
-	</modules>
+
+    <name>ScaleCube</name>
+    <description>
+        ScaleCube is a lightweight decentralized cluster membership, failure detection, messaging and
+        gossip protocol library for the Java VM.
+    </description>
+    <inceptionYear>2015</inceptionYear>
+    <url>http://scalecube.io</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>scalecube.io</id>
+            <name>The ScaleCube Project Contributors</name>
+            <email>info@scalecube.io</email>
+            <organization>The ScaleCube Project</organization>
+            <organizationUrl>http://scalecube.io/</organizationUrl>
+        </developer>
+    </developers>
+
 
     <distributionManagement>
         <snapshotRepository>
@@ -21,14 +43,18 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-	
-	<scm>
+
+    <scm>
         <url>https://github.com/scalecube/scalecube-security</url>
         <connection>scm:git:git@github.com:scalecube/scalecube-security.git</connection>
         <developerConnection>scm:git:git@github.com:scalecube/scalecube-security.git
         </developerConnection>
         <tag>HEAD</tag>
     </scm>
+
+    <modules>
+        <module>JWT</module>
+    </modules>
 
     <build>
         <plugins>
