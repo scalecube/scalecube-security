@@ -4,6 +4,7 @@
         <groupId>io.scalecube</groupId>
         <artifactId>scalecube-security-parent</artifactId>
         <version>1.0.2-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>scalecube-security-jwt</artifactId>
 

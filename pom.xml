@@ -2,15 +2,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.scalecube</groupId>
     <artifactId>scalecube-security-parent</artifactId>
     <version>1.0.2-SNAPSHOT</version>
-    <parent>
-      <artifactId>scalecube-parent-pom</artifactId>
-      <version>0.0.3</version>
-      <groupId>io.scalecube</groupId>
-    </parent>
     <packaging>pom</packaging>
+    
+    <parent>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-parent-pom</artifactId>
+      <version>0.0.5</version>
+    </parent>
 
     <name>ScaleCube</name>
     <description>
