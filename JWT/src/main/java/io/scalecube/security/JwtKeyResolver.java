@@ -1,8 +1,8 @@
 package io.scalecube.security;
 
 import java.security.Key;
-import java.util.Optional;
 import java.util.Map;
+import java.util.Optional;
 
 @FunctionalInterface
 public interface JwtKeyResolver {

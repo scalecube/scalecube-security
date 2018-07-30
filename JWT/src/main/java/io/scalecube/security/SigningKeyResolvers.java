@@ -31,7 +31,8 @@ public class SigningKeyResolvers {
       }
 
       @Override
-      public Key resolveSigningKey(@SuppressWarnings("rawtypes") JwsHeader header, String plaintext) {
+      public Key resolveSigningKey(@SuppressWarnings("rawtypes") JwsHeader header,
+          String plaintext) {
         throw new UnsupportedOperationException(); // Will only occur in case the token isn't json.
       }
     };

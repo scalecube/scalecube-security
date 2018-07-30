@@ -23,10 +23,10 @@ public class Profile {
    * @param name of the user.
    * @param familyName of the user.
    * @param givenName of the user.
-   * @param claims  claims as key values.
+   * @param claims claims as key values.
    */
   public Profile(String userId, String tenant, String email, Boolean isEmaildVerified, String name,
-                 String familyName, String givenName, Map<String, Object> claims) {
+      String familyName, String givenName, Map<String, Object> claims) {
     this.userId = userId;
     this.tenant = tenant;
     this.email = email;
