@@ -3,6 +3,9 @@ addons:
   apt:
     packages:
     - libxml-xpath-perl
+sudo: required
+services:
+- docker
 jdk:
 - oraclejdk8
 
@@ -21,3 +24,4 @@ deploy:
   - "./src/main/scripts/cd/deploy.sh"
   on:
     branch: master
+
