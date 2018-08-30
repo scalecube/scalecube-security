@@ -25,13 +25,16 @@ public class JwtAuthenticatorImpl implements JwtAuthenticator {
 
     Jws<Claims> claims =
         Jwts.parser().setSigningKeyResolver(signingKeyResolver).parseClaimsJws(token);
-
     Claims tokenClaims = claims.getBody();
 
-    return new Profile(tokenClaims.get("sub", String.class), tokenClaims.get("aud", String.class),
-        tokenClaims.get("email", String.class), tokenClaims.get("email_verified", Boolean.class),
-        tokenClaims.get("name", String.class), tokenClaims.get("family_name", String.class),
-        tokenClaims.get("given_name", String.class), tokenClaims);
+    return new Profile.Builder().userId(tokenClaims.get("sub", String.class))
+        .tenant(tokenClaims.get("aud", String.class))
+        .email(tokenClaims.get("email", String.class))
+        .emailVerified(tokenClaims.get("email_verified", Boolean.class))
+        .name(tokenClaims.get("name", String.class))
+        .familyName(tokenClaims.get("family_name", String.class))
+        .givenName(tokenClaims.get("given_name", String.class))
+        .claims(tokenClaims).build();
   }
 
   public static class Builder {
