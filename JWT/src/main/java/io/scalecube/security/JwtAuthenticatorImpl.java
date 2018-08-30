@@ -20,9 +20,11 @@ public class JwtAuthenticatorImpl implements JwtAuthenticator {
    */
   public Profile authenticate(String token) {
 
-    SigningKeyResolver signingKeyResolver = SigningKeyResolvers.defaultSigningKeyResolver(keyResolver);
+    SigningKeyResolver signingKeyResolver =
+        SigningKeyResolvers.defaultSigningKeyResolver(keyResolver);
 
-    Jws<Claims> claims = Jwts.parser().setSigningKeyResolver(signingKeyResolver).parseClaimsJws(token);
+    Jws<Claims> claims =
+        Jwts.parser().setSigningKeyResolver(signingKeyResolver).parseClaimsJws(token);
 
     Claims tokenClaims = claims.getBody();
 

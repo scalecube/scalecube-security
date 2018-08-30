@@ -18,6 +18,7 @@ public class SigningKeyResolvers {
 
     return new SigningKeyResolver() {
 
+      @SuppressWarnings("unchecked")
       @Override
       public Key resolveSigningKey(JwsHeader header, Claims claims) {
         return keyResolver.flatMap(actualResolver -> {
@@ -30,7 +31,8 @@ public class SigningKeyResolvers {
       }
 
       @Override
-      public Key resolveSigningKey(JwsHeader header, String plaintext) {
+      public Key resolveSigningKey(@SuppressWarnings("rawtypes") JwsHeader header,
+          String plaintext) {
         throw new UnsupportedOperationException(); // Will only occur in case the token isn't json.
       }
     };
