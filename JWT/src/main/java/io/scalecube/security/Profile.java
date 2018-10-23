@@ -19,18 +19,18 @@ public class Profile {
    * @param userId of the user.
    * @param tenant of the user.
    * @param email of the user.
-   * @param isEmaildVerified of the user.
+   * @param isEmailVerified of the user.
    * @param name of the user.
    * @param familyName of the user.
    * @param givenName of the user.
    * @param claims claims as key values.
    */
-  private Profile(String userId, String tenant, String email, Boolean isEmaildVerified, String name,
+  private Profile(String userId, String tenant, String email, Boolean isEmailVerified, String name,
       String familyName, String givenName, Map<String, Object> claims) {
     this.userId = userId;
     this.tenant = tenant;
     this.email = email;
-    this.isEmailVerified = isEmaildVerified;
+    this.isEmailVerified = isEmailVerified;
     this.name = name;
     this.familyName = familyName;
     this.givenName = givenName;
@@ -67,6 +67,27 @@ public class Profile {
 
   public Map<String, Object> getClaims() {
     return claims;
+  }
+
+  @Override
+  public String toString() {
+    return super.toString()
+            + String.format(" ["
+            + "tenant=%s, "
+            + "email=%s, "
+            + "isEmailVerified=%s, "
+            + "name=%s, "
+            + "familyName=%s, "
+            + "givenName=%s, "
+            + "claims=%s]",
+            userId,
+            tenant,
+            email,
+            isEmailVerified,
+            name,
+            familyName,
+            givenName,
+            claims);
   }
 
   public static class Builder {
