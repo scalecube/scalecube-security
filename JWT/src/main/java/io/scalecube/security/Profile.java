@@ -13,28 +13,15 @@ public class Profile {
   private final String givenName;
   private final Map<String, Object> claims;
 
-  /**
-   * Profile constructor.
-   *
-   * @param userId of the user.
-   * @param tenant of the user.
-   * @param email of the user.
-   * @param isEmaildVerified of the user.
-   * @param name of the user.
-   * @param familyName of the user.
-   * @param givenName of the user.
-   * @param claims claims as key values.
-   */
-  private Profile(String userId, String tenant, String email, Boolean isEmaildVerified, String name,
-      String familyName, String givenName, Map<String, Object> claims) {
-    this.userId = userId;
-    this.tenant = tenant;
-    this.email = email;
-    this.isEmailVerified = isEmaildVerified;
-    this.name = name;
-    this.familyName = familyName;
-    this.givenName = givenName;
-    this.claims = claims;
+  private Profile(Builder builder) {
+    this.userId = builder.userId;
+    this.tenant = builder.tenant;
+    this.email = builder.email;
+    this.isEmailVerified = builder.isEmailVerified;
+    this.name = builder.name;
+    this.familyName = builder.familyName;
+    this.givenName = builder.givenName;
+    this.claims = builder.claims;
   }
 
   public String getUserId() {
@@ -67,6 +54,27 @@ public class Profile {
 
   public Map<String, Object> getClaims() {
     return claims;
+  }
+
+  @Override
+  public String toString() {
+    return super.toString()
+            + String.format(" ["
+            + "tenant=%s, "
+            + "email=%s, "
+            + "isEmailVerified=%s, "
+            + "name=%s, "
+            + "familyName=%s, "
+            + "givenName=%s, "
+            + "claims=%s]",
+            userId,
+            tenant,
+            email,
+            isEmailVerified,
+            name,
+            familyName,
+            givenName,
+            claims);
   }
 
   public static class Builder {
@@ -121,8 +129,7 @@ public class Profile {
     }
 
     public Profile build() {
-      return new Profile(userId, tenant,email, isEmailVerified, name, familyName, givenName,
-          claims);
+      return new Profile(this);
     }
   }
 }
