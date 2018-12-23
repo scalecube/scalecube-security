@@ -12,7 +12,11 @@ public class Profile {
   private final String familyName;
   private final String givenName;
   private final Map<String, Object> claims;
-
+  
+  public static Builder builder() {
+    return new Builder();
+  }
+  
   private Profile(Builder builder) {
     this.userId = builder.userId;
     this.tenant = builder.tenant;
