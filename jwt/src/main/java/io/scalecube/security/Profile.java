@@ -12,11 +12,7 @@ public class Profile {
   private final String familyName;
   private final String givenName;
   private final Map<String, Object> claims;
-  
-  public static Builder builder() {
-    return new Builder();
-  }
-  
+
   private Profile(Builder builder) {
     this.userId = builder.userId;
     this.tenant = builder.tenant;
@@ -28,15 +24,15 @@ public class Profile {
     this.claims = builder.claims;
   }
 
-  public String getUserId() {
+  public String userId() {
     return userId;
   }
 
-  public String getTenant() {
+  public String tenant() {
     return tenant;
   }
 
-  public String getEmail() {
+  public String email() {
     return email;
   }
 
@@ -44,41 +40,40 @@ public class Profile {
     return isEmailVerified;
   }
 
-  public String getName() {
+  public String name() {
     return name;
   }
 
-  public String getFamilyName() {
+  public String familyName() {
     return familyName;
   }
 
-  public String getGivenName() {
+  public String givenName() {
     return givenName;
   }
 
-  public Map<String, Object> getClaims() {
+  public Map<String, Object> claims() {
     return claims;
   }
 
   @Override
   public String toString() {
     return super.toString()
-            + String.format(" ["
-            + "tenant=%s, "
-            + "email=%s, "
-            + "isEmailVerified=%s, "
-            + "name=%s, "
-            + "familyName=%s, "
-            + "givenName=%s, "
-            + "claims=%s]",
-            userId,
-            tenant,
-            email,
-            isEmailVerified,
-            name,
-            familyName,
-            givenName,
-            claims);
+        + String.format(
+            " ["
+                + "userId=%s, "
+                + "tenant=%s, "
+                + "email=%s, "
+                + "isEmailVerified=%s, "
+                + "name=%s, "
+                + "familyName=%s, "
+                + "givenName=%s, "
+                + "claims=%s]",
+            userId, tenant, email, isEmailVerified, name, familyName, givenName, claims);
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   public static class Builder {
@@ -91,6 +86,7 @@ public class Profile {
     private String givenName;
     private Map<String, Object> claims;
 
+    private Builder() {}
 
     public Builder userId(String userId) {
       this.userId = userId;
@@ -137,4 +133,3 @@ public class Profile {
     }
   }
 }
-

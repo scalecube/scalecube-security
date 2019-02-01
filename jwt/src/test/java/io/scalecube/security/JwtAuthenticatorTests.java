@@ -1,40 +1,37 @@
 package io.scalecube.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
-import javax.crypto.spec.SecretKeySpec;
-import java.io.UnsupportedEncodingException;
+import io.jsonwebtoken.security.SignatureException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 class JwtAuthenticatorTests {
 
-  private static final String HMAC_SHA_256 = "HMACSHA256";
-  private final String hmacSecret = "secert";
-  private KeyPair keys = generateRSAKeys();
+  private static final Key hmacSecretKey =
+      new SecretKeySpec(
+          UUID.randomUUID().toString().getBytes(), SignatureAlgorithm.HS256.getJcaName());
+  private static final KeyPair keys = generateRSAKeys();
 
   @Test
-  public void authenticateAuthenticateUsingKidHeaderPropertyAuthenticationSuccess() {
+  void authenticateAuthenticateUsingKidHeaderPropertyAuthenticationSuccess() {
     Map<String, Object> customClaims = new HashMap<>();
     customClaims.put("name", "Trader1");
 
@@ -44,24 +41,20 @@ class JwtAuthenticatorTests {
             .setSubject("1")
             .setHeaderParam("kid", "5")
             .addClaims(customClaims)
-            .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
+            .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256)))
-            .build();
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
 
     Profile profile = sut.authenticate(token);
 
-    assertEquals("Tenant1", profile.getTenant());
-    assertEquals("Trader1", profile.getName());
-    assertEquals("1", profile.getUserId());
+    assertEquals("Tenant1", profile.tenant());
+    assertEquals("Trader1", profile.name());
+    assertEquals("1", profile.userId());
   }
 
   @Test
-  public void authenticateCreateTokenAndAuthenticateHmacAuthenticationSuccess() {
-
+  void authenticateCreateTokenAndAuthenticateHmacAuthenticationSuccess() {
     Map<String, Object> customClaims = new HashMap<>();
     customClaims.put("name", "Trader1");
 
@@ -70,23 +63,20 @@ class JwtAuthenticatorTests {
             .setAudience("Tenant1")
             .setSubject("1")
             .addClaims(customClaims)
-            .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
+            .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256)))
-            .build();
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
 
     Profile profile = sut.authenticate(token);
 
-    assertEquals("Tenant1", profile.getTenant());
-    assertEquals("Trader1", profile.getName());
-    assertEquals("1", profile.getUserId());
+    assertEquals("Tenant1", profile.tenant());
+    assertEquals("Trader1", profile.name());
+    assertEquals("1", profile.userId());
   }
 
   @Test
-  public void authenticateValidTokenInvalidHmacSecretAuthenticationFailedExceptionThrown() {
+  void authenticateValidTokenInvalidHmacSecretAuthenticationFailedExceptionThrown() {
     Map<String, Object> customClaims = new HashMap<>();
     customClaims.put("name", "trader1");
 
@@ -96,25 +86,23 @@ class JwtAuthenticatorTests {
             .setSubject("1")
             .setHeaderParam("kid", "5")
             .addClaims(customClaims)
-            .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
+            .signWith(hmacSecretKey)
             .compact();
 
     JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(
-                map -> Optional.of(new SecretKeySpec("otherSecret".getBytes(), HMAC_SHA_256)))
-            .build();
+        new DefaultJwtAuthenticator(
+            map ->
+                new SecretKeySpec(
+                    UUID.randomUUID().toString().getBytes(),
+                    SignatureAlgorithm.HS256.getJcaName()));
 
-    assertThrows(
-        SignatureException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
+    AuthenticationException actualException =
+        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
+    assertEquals(SignatureException.class, actualException.getCause().getClass());
   }
 
   @Test
-  public void
+  void
       authenticateAuthenticateUsingKidHeaderPropertyKidIsMissingAuthenticationFailsExceptionThrown() {
 
     Map<String, Object> customClaims = new HashMap<>();
@@ -125,32 +113,28 @@ class JwtAuthenticatorTests {
             .setAudience("Tenant1")
             .setSubject("1")
             .addClaims(customClaims)
-            .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
+            .signWith(hmacSecretKey)
             .compact();
 
     JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(
-                map ->
-                    Optional.ofNullable(map.get("kid"))
-                        .filter(String.class::isInstance)
-                        .flatMap(
-                            s -> {
-                              // Safe to cast to string, use the kid property to fetch the key
-                              return Optional.of(
-                                  new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256));
-                            }))
-            .build();
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
+        new DefaultJwtAuthenticator(
+            map ->
+                Optional.ofNullable(map.get("kid"))
+                    .filter(String.class::isInstance)
+                    .map(
+                        s -> {
+                          // Safe to cast to string, use the kid property to fetch the key
+                          return hmacSecretKey;
+                        })
+                    .orElse(null));
+
+    AuthenticationException actualException =
+        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
+    assertEquals(IllegalArgumentException.class, actualException.getCause().getClass());
   }
 
   @Test
-  public void authenticateCreateTokenAndValidateRsaAuthenticationSuccess() {
+  void authenticateCreateTokenAndValidateRsaAuthenticationSuccess() {
     Map<String, Object> customClaims = new HashMap<>();
     customClaims.put("name", "Trader1");
 
@@ -160,234 +144,106 @@ class JwtAuthenticatorTests {
             .setSubject("1")
             .setHeaderParam("kid", "5")
             .addClaims(customClaims)
-            .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+            .signWith(keys.getPrivate())
             .compact();
 
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(map -> Optional.of(keys.getPublic()))
-            .build();
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
 
     Profile profile = sut.authenticate(token);
 
-    Assertions.assertEquals("Tenant1", profile.getTenant());
-    Assertions.assertEquals("Trader1", profile.getName());
-    Assertions.assertEquals("1", profile.getUserId());
+    assertEquals("Tenant1", profile.tenant());
+    assertEquals("Trader1", profile.name());
+    assertEquals("1", profile.userId());
   }
 
   @Test
-  public void
-      authenticateCreateTokenAndValidateKeyResolverReturnsEmptyOptionalAuthenticationFailsExceptionThrown() {
+  void authenticateCreateTokenAndValidateWrongKeyForAlgorithmAuthenticationFailsExceptionThrown() {
 
     String token =
         Jwts.builder()
             .setAudience("Tenant1")
             .setSubject("1")
             .setHeaderParam("kid", "5")
-            .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+            .signWith(keys.getPrivate())
             .compact();
 
     JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder().keyResolver(map -> Optional.empty()).build();
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
+        new DefaultJwtAuthenticator(
+            map ->
+                Optional.ofNullable(map.get("kid"))
+                    .filter(String.class::isInstance)
+                    .map(
+                        s -> {
+                          // Safe to cast to string, use the kid property to fetch the key
+                          return hmacSecretKey;
+                        })
+                    .orElse(null));
+
+    AuthenticationException actualException =
+        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
+    assertEquals(UnsupportedJwtException.class, actualException.getCause().getClass());
   }
 
   @Test
-  public void
-      authenticateCreateTokenAndValidateWrongKeyForAlgorithmAuthenticationFailsExceptionThrown() {
+  void authenticateMissingClaimsInTokenAuthenticationSuccessProfilePropertyIsMissing() {
 
     String token =
         Jwts.builder()
             .setAudience("Tenant1")
             .setSubject("1")
             .setHeaderParam("kid", "5")
-            .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+            .signWith(keys.getPrivate())
             .compact();
 
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(
-                map ->
-                    Optional.ofNullable(map.get("kid"))
-                        .filter(String.class::isInstance)
-                        .flatMap(
-                            s -> {
-                              // Safe to cast to string, use the kid property to fetch the key
-                              return Optional.of(
-                                  new SecretKeySpec("secret".getBytes(), HMAC_SHA_256));
-                            }))
-            .build();
-
-    assertThrows(
-        UnsupportedJwtException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
-  }
-
-  @Test
-  public void authenticateHmacTokenCreatedFromDifferentLibraryAuthenticationSuccess()
-      throws UnsupportedEncodingException {
-    String token =
-        JWT.create()
-            .withAudience("Tenant1")
-            .withSubject("1")
-            .withKeyId("5")
-            .withClaim("name", "Trader1")
-            .sign(Algorithm.HMAC256(hmacSecret));
-
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(
-                map ->
-                    Optional.ofNullable(map.get("kid"))
-                        .filter(String.class::isInstance)
-                        .flatMap(
-                            s -> {
-                              // Safe to cast to string, use the kid property to fetch the key
-                              return Optional.of(
-                                  new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256));
-                            }))
-            .build();
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
 
     Profile profile = sut.authenticate(token);
 
-    Assertions.assertEquals("Tenant1", profile.getTenant());
-    Assertions.assertEquals("Trader1", profile.getName());
-    Assertions.assertEquals("1", profile.getUserId());
+    assertEquals("Tenant1", profile.tenant());
+    assertNull(profile.name());
+    assertEquals("1", profile.userId());
   }
 
   @Test
-  public void authenticateRsaTokenCreatedFromDifferentLibraryAuthenticationSuccess() {
-
-    String token =
-        JWT.create()
-            .withAudience("Tenant1")
-            .withSubject("1")
-            .withKeyId("5")
-            .withClaim("name", "Trader1")
-            .sign(
-                Algorithm.RSA256(
-                    (RSAPublicKey) keys.getPublic(), (RSAPrivateKey) keys.getPrivate()));
-
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(
-                map ->
-                    Optional.ofNullable(map.get("kid"))
-                        .filter(String.class::isInstance)
-                        .flatMap(
-                            s -> {
-                              // Safe to cast to string, use the kid property to fetch the key
-                              return Optional.of(keys.getPublic());
-                            }))
-            .build();
-
-    Profile profile = sut.authenticate(token);
-
-    Assertions.assertEquals("Tenant1", profile.getTenant());
-    Assertions.assertEquals("Trader1", profile.getName());
-    Assertions.assertEquals("1", profile.getUserId());
-  }
-
-  @Test
-  public void authenticateMissingClaimsInTokenAuthenticationSuccessProfilePropertyIsMissing() {
-
-    String token =
-        Jwts.builder()
-            .setAudience("Tenant1")
-            .setSubject("1")
-            .setHeaderParam("kid", "5")
-            .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
-            .compact();
-
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(map -> Optional.of(keys.getPublic()))
-            .build();
-
-    Profile profile = sut.authenticate(token);
-
-    Assertions.assertEquals("Tenant1", profile.getTenant());
-    Assertions.assertEquals(null, profile.getName());
-    Assertions.assertEquals("1", profile.getUserId());
-  }
-
-  @Test
-  public void authenticateUnsignedTokenAuthenticationFailsExceptionThrown() {
+  void authenticateUnsignedTokenAuthenticationFailsExceptionThrown() {
     String token = Jwts.builder().setAudience("Tenant1").setSubject("1").compact();
 
     JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(
-                map ->
-                    Optional.ofNullable(map.get("kid"))
-                        .filter(String.class::isInstance)
-                        .flatMap(
-                            s -> {
-                              // Safe to cast to string, use the kid property to fetch the key
-                              return Optional.empty();
-                            }))
-            .build();
+        new DefaultJwtAuthenticator(
+            map ->
+                Optional.ofNullable(map.get("kid"))
+                    .filter(String.class::isInstance)
+                    .map(
+                        s -> {
+                          // Safe to cast to string, use the kid property to fetch the key
+                          return hmacSecretKey;
+                        })
+                    .orElse(null));
 
-    assertThrows(
-        UnsupportedJwtException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
+    AuthenticationException actualException =
+        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
+    assertEquals(UnsupportedJwtException.class, actualException.getCause().getClass());
   }
 
   @Test
-  public void authenticateKeyResolverRetrunNullsAuthenticationFailsExceptionThrown() {
+  void authenticateKeyResolverReturnNullsAuthenticationFailsExceptionThrown() {
     String token =
         Jwts.builder()
             .setAudience("Tenant1")
             .setSubject("1")
             .setHeaderParam("kid", "5")
-            .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
+            .signWith(keys.getPrivate())
             .compact();
 
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder().keyResolver(map -> Optional.ofNullable(null)).build();
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> null);
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
+    AuthenticationException actualException =
+        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
+    assertEquals(IllegalArgumentException.class, actualException.getCause().getClass());
   }
 
   @Test
-  public void authenticateNoKeyResolverIsProvidedAuthenticationFailsExceptionThrown() {
-
-    String token =
-        Jwts.builder()
-            .setAudience("Tenant1")
-            .setSubject("1")
-            .setHeaderParam("kid", "5")
-            .signWith(SignatureAlgorithm.RS256, keys.getPrivate())
-            .compact();
-
-    JwtAuthenticator sut = new JwtAuthenticatorImpl.Builder().build();
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
-  }
-
-  @Test
-  public void authenticateAuthenticateExpiredTokenFails() {
+  void authenticateAuthenticateExpiredTokenFails() {
 
     Map<String, Object> customClaims = new HashMap<>();
     customClaims.put("name", "Trader1");
@@ -399,19 +255,14 @@ class JwtAuthenticatorTests {
             .setHeaderParam("kid", "5")
             .setExpiration(Date.from(Instant.ofEpochMilli(0)))
             .addClaims(customClaims)
-            .signWith(SignatureAlgorithm.HS256, hmacSecret.getBytes())
+            .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut =
-        new JwtAuthenticatorImpl.Builder()
-            .keyResolver(map -> Optional.of(new SecretKeySpec(hmacSecret.getBytes(), HMAC_SHA_256)))
-            .build();
-    assertThrows(
-        ExpiredJwtException.class,
-        () -> {
-          throw assertThrows(AuthenticationException.class, () -> sut.authenticate(token))
-              .getCause();
-        });
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
+
+    AuthenticationException actualException =
+        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
+    assertEquals(ExpiredJwtException.class, actualException.getCause().getClass());
   }
 
   private static KeyPair generateRSAKeys() {
