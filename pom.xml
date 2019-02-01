@@ -20,6 +20,6 @@
     <tag>HEAD</tag>
   </scm>
   <modules>
-    <module>JWT</module>
+    <module>jwt</module>
   </modules>
 </project>
