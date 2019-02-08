@@ -3,32 +3,26 @@ package io.scalecube.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
-import io.jsonwebtoken.SigningKeyResolver;
 import io.jsonwebtoken.UnsupportedJwtException;
-import java.util.Optional;
+import io.jsonwebtoken.security.SignatureException;
 
-public class JwtAuthenticatorImpl implements JwtAuthenticator {
+public final class DefaultJwtAuthenticator implements JwtAuthenticator {
 
-  Optional<JwtKeyResolver> keyResolver;
+  private final JwtParser jwtParser;
 
-  private JwtAuthenticatorImpl(Optional<JwtKeyResolver> keyResolver) {
-    this.keyResolver = keyResolver;
+  public DefaultJwtAuthenticator(JwtKeyResolver jwtKeyResolver) {
+    jwtParser = Jwts.parser().setSigningKeyResolver(new DefaultSigningKeyResolver(jwtKeyResolver));
   }
 
-  /** 
-   * Authenticate a JWT token using the provided {@link JwtKeyResolver}.
-   */
+  @Override
   public Profile authenticate(String token) {
-
-    SigningKeyResolver signingKeyResolver =
-        SigningKeyResolvers.defaultSigningKeyResolver(keyResolver);
-
     Jws<Claims> claims;
+
     try {
-      claims = Jwts.parser().setSigningKeyResolver(signingKeyResolver).parseClaimsJws(token);
+      claims = jwtParser.parseClaimsJws(token);
     } catch (ExpiredJwtException
         | UnsupportedJwtException
         | MalformedJwtException
@@ -39,7 +33,7 @@ public class JwtAuthenticatorImpl implements JwtAuthenticator {
 
     Claims tokenClaims = claims.getBody();
 
-    return new Profile.Builder()
+    return Profile.builder()
         .userId(tokenClaims.get("sub", String.class))
         .tenant(tokenClaims.get("aud", String.class))
         .email(tokenClaims.get("email", String.class))
@@ -49,19 +43,5 @@ public class JwtAuthenticatorImpl implements JwtAuthenticator {
         .givenName(tokenClaims.get("given_name", String.class))
         .claims(tokenClaims)
         .build();
-  }
-
-  public static class Builder {
-
-    Optional<JwtKeyResolver> keyResolver = Optional.empty();
-
-    public Builder keyResolver(JwtKeyResolver keyResolver) {
-      this.keyResolver = Optional.of(keyResolver);
-      return this;
-    }
-
-    public JwtAuthenticator build() {
-      return new JwtAuthenticatorImpl(keyResolver);
-    }
   }
 }
