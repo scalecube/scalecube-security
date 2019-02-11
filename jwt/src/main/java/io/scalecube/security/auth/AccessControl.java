@@ -5,7 +5,7 @@ import reactor.core.publisher.Mono;
 
 public interface AccessControl {
   /**
-   * Request for action to be made
+   * Request for an action to be made.
    *
    * @param identity a token, or any kind of identifying string
    * @param action the action name

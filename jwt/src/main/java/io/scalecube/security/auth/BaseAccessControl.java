@@ -43,5 +43,5 @@ public class BaseAccessControl implements AccessControl {
         .switchIfEmpty(
             Mono.error(() -> new AuthenticationException("Authentication Failure", null)))
         .flatMap(profile -> authorizator.authorize(profile, action));
-  };
+  }
 }
