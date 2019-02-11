@@ -18,7 +18,7 @@ public class PermissionsAuthorizer implements Authorizer {
 
     PermissionsAuthorizer.Builder permission(String action, String... subjects) {
       for (String subject : subjects) {
-        permissions.computeIfAbsent(action, newAction -> new HashSet()).add(subject);
+        permissions.computeIfAbsent(action, newAction -> new HashSet<>()).add(subject);
       }
       return this;
     }
