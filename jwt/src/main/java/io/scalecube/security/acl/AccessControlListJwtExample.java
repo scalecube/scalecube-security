@@ -1,5 +1,6 @@
 package io.scalecube.security.acl;
 
+import io.jsonwebtoken.Jwts;
 import io.scalecube.security.DefaultJwtAuthenticator;
 import io.scalecube.security.JwtKeyResolver;
 import io.scalecube.security.auth.AccessControl;
@@ -12,6 +13,10 @@ import javax.crypto.KeyGenerator;
 
 public class AccessControlListJwtExample {
   
+  private static final String OWNER = "owner";
+  private static final String ADMIN = "admin";
+  private static final String MEMBER = "member";
+
   /**
    * an example.
    *
@@ -22,15 +27,15 @@ public class AccessControlListJwtExample {
 
     Authorizer permissions =
         PermissionsAuthorizer.builder()
-            .permission("repo.create", "owner", "admin")
-            .permission("blah", "owner", "admin", "member")
-            .permission("repo.remove", "owner")
+            .permission("repo.create", OWNER, ADMIN)
+            .permission("blah", OWNER, ADMIN, MEMBER)
+            .permission("repo.remove", OWNER)
             .build();
 
     KeyGenerator kg = KeyGenerator.getInstance("HmacSHA256");
     Key key = kg.generateKey();
 
-    JwtKeyResolver jwtKeyResolver = (m -> key);
+    JwtKeyResolver jwtKeyResolver = (m -> "1".equals(m.get("kid"))?key:null);
 
     Authenticator authenticator = new DefaultJwtAuthenticator(jwtKeyResolver);
 
@@ -51,7 +56,15 @@ public class AccessControlListJwtExample {
     AccessControl control =
         BaseAccessControl.builder().authenticator(authenticator).authorizer(permissions).build();
 
-    String token = "{header:1}.{claims..'ronen'.}.hash";
+    String token = Jwts.builder()
+        .setHeaderParam("kid", "1")
+        .claim("sub", "UID123456789")
+        .claim("aud", "scalecube")
+        .claim("email","myemail@example.com")
+        .claim("name", "ronen")
+        .claim("roles", OWNER)
+        .signWith(key)
+        .compact();
     control.tryAccess(token, "repo.create").subscribe(System.out::println, System.err::println);
   }
 }
