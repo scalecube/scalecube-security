@@ -22,7 +22,6 @@ import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class JwtAuthenticatorTests {
@@ -30,7 +29,7 @@ class JwtAuthenticatorTests {
   private static final Key hmacSecretKey =
       new SecretKeySpec(
           UUID.randomUUID().toString().getBytes(), SignatureAlgorithm.HS256.getJcaName());
-//  private static final Mono<Key> hmacSecretKeyMono = Mono.just(hmacSecretKey).cache();
+  //  private static final Mono<Key> hmacSecretKeyMono = Mono.just(hmacSecretKey).cache();
   private static final KeyPair keys = generateRSAKeys();
 
   @Test
@@ -75,13 +74,13 @@ class JwtAuthenticatorTests {
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
 
     StepVerifier.create(sut.authenticate(token))
-    .assertNext(
-        profile -> {
-
-    assertEquals("Tenant1", profile.tenant());
-    assertEquals("Trader1", profile.name());
-    assertEquals("1", profile.userId());
-        }).verifyComplete();
+        .assertNext(
+            profile -> {
+              assertEquals("Tenant1", profile.tenant());
+              assertEquals("Trader1", profile.name());
+              assertEquals("1", profile.userId());
+            })
+        .verifyComplete();
   }
 
   @Test
@@ -104,15 +103,14 @@ class JwtAuthenticatorTests {
                 new SecretKeySpec(
                     UUID.randomUUID().toString().getBytes(),
                     SignatureAlgorithm.HS256.getJcaName()));
-
-    AuthenticationException actualException =
-        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
-    assertEquals(SignatureException.class, actualException.getCause().getClass());
+    StepVerifier.create(sut.authenticate(token))
+        .expectErrorSatisfies(
+            actualException ->
+                assertEquals(SignatureException.class, actualException.getCause().getClass()));
   }
 
   @Test
-  void
-      authenticateAuthenticateUsingKidHeaderPropertyKidIsMissingAuthenticationFailsExceptionThrown() {
+  void authenticateUsingKidHeaderPropertyKidIsMissingAuthenticationFailsExceptionThrown() {
 
     Map<String, Object> customClaims = new HashMap<>();
     customClaims.put("name", "Trader1");
@@ -137,9 +135,11 @@ class JwtAuthenticatorTests {
                         })
                     .orElse(null));
 
-    AuthenticationException actualException =
-        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
-    assertEquals(IllegalArgumentException.class, actualException.getCause().getClass());
+    StepVerifier.create(sut.authenticate(token))
+        .expectErrorSatisfies(
+            actualException ->
+                assertEquals(
+                    IllegalArgumentException.class, actualException.getCause().getClass()));
   }
 
   @Test
@@ -159,12 +159,13 @@ class JwtAuthenticatorTests {
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
 
     StepVerifier.create(sut.authenticate(token))
-    .assertNext(
-        profile -> {
-          assertEquals("Tenant1", profile.tenant());
-          assertEquals("Trader1", profile.name());
-          assertEquals("1", profile.userId());
-        }).verifyComplete();
+        .assertNext(
+            profile -> {
+              assertEquals("Tenant1", profile.tenant());
+              assertEquals("Trader1", profile.name());
+              assertEquals("1", profile.userId());
+            })
+        .verifyComplete();
   }
 
   @Test
@@ -190,9 +191,10 @@ class JwtAuthenticatorTests {
                         })
                     .orElse(null));
 
-    AuthenticationException actualException =
-        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
-    assertEquals(UnsupportedJwtException.class, actualException.getCause().getClass());
+    StepVerifier.create(sut.authenticate(token))
+        .expectErrorSatisfies(
+            actualException ->
+                assertEquals(UnsupportedJwtException.class, actualException.getCause().getClass()));
   }
 
   @Test
@@ -209,12 +211,13 @@ class JwtAuthenticatorTests {
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
 
     StepVerifier.create(sut.authenticate(token))
-    .assertNext(
-        profile -> {
-          assertEquals("Tenant1", profile.tenant());
-          assertNull(profile.name());
-          assertEquals("1", profile.userId());
-        }).verifyComplete();
+        .assertNext(
+            profile -> {
+              assertEquals("Tenant1", profile.tenant());
+              assertNull(profile.name());
+              assertEquals("1", profile.userId());
+            })
+        .verifyComplete();
   }
 
   @Test
@@ -233,9 +236,10 @@ class JwtAuthenticatorTests {
                         })
                     .orElse(null));
 
-    AuthenticationException actualException =
-        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
-    assertEquals(UnsupportedJwtException.class, actualException.getCause().getClass());
+    StepVerifier.create(sut.authenticate(token))
+        .expectErrorSatisfies(
+            actualException ->
+                assertEquals(UnsupportedJwtException.class, actualException.getCause().getClass()));
   }
 
   @Test
@@ -249,10 +253,11 @@ class JwtAuthenticatorTests {
             .compact();
 
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> null);
-
-    AuthenticationException actualException =
-        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
-    assertEquals(IllegalArgumentException.class, actualException.getCause().getClass());
+    StepVerifier.create(sut.authenticate(token))
+        .expectErrorSatisfies(
+            actualException ->
+                assertEquals(
+                    IllegalArgumentException.class, actualException.getCause().getClass()));
   }
 
   @Test
@@ -271,11 +276,11 @@ class JwtAuthenticatorTests {
             .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
-
-    AuthenticationException actualException =
-        assertThrows(AuthenticationException.class, () -> sut.authenticate(token));
-    assertEquals(ExpiredJwtException.class, actualException.getCause().getClass());
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> null);
+    StepVerifier.create(sut.authenticate(token))
+        .expectErrorSatisfies(
+            actualException ->
+                assertEquals(ExpiredJwtException.class, actualException.getCause().getClass()));
   }
 
   private static KeyPair generateRSAKeys() {
