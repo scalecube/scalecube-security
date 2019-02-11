@@ -13,10 +13,10 @@ import javax.crypto.KeyGenerator;
 public class AccessControlListJwtExample {
   
   /**
-   * an example
+   * an example.
    *
-   * @param args
-   * @throws NoSuchAlgorithmException
+   * @param args ignored
+   * @throws NoSuchAlgorithmException when HmacSHA256 is not supported
    */
   public static void main(String[] args) throws NoSuchAlgorithmException {
 
