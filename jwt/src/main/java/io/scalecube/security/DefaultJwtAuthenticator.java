@@ -8,6 +8,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
+import reactor.core.publisher.Mono;
 
 public final class DefaultJwtAuthenticator implements JwtAuthenticator {
 
@@ -18,30 +19,33 @@ public final class DefaultJwtAuthenticator implements JwtAuthenticator {
   }
 
   @Override
-  public Profile authenticate(String token) {
-    Jws<Claims> claims;
+  public Mono<Profile> authenticate(String token) {
+    return Mono.create(
+        sink -> {
 
-    try {
-      claims = jwtParser.parseClaimsJws(token);
-    } catch (ExpiredJwtException
-        | UnsupportedJwtException
-        | MalformedJwtException
-        | SignatureException
-        | IllegalArgumentException exception) {
-      throw new AuthenticationException(exception);
-    }
+          try {
+            Jws<Claims> claims = jwtParser.parseClaimsJws(token);
+            Claims tokenClaims = claims.getBody();
 
-    Claims tokenClaims = claims.getBody();
-
-    return Profile.builder()
-        .userId(tokenClaims.get("sub", String.class))
-        .tenant(tokenClaims.get("aud", String.class))
-        .email(tokenClaims.get("email", String.class))
-        .emailVerified(tokenClaims.get("email_verified", Boolean.class))
-        .name(tokenClaims.get("name", String.class))
-        .familyName(tokenClaims.get("family_name", String.class))
-        .givenName(tokenClaims.get("given_name", String.class))
-        .claims(tokenClaims)
-        .build();
+            sink.success(
+                Profile.builder()
+                    .userId(tokenClaims.get("sub", String.class))
+                    .tenant(tokenClaims.get("aud", String.class))
+                    .email(tokenClaims.get("email", String.class))
+                    .emailVerified(tokenClaims.get("email_verified", Boolean.class))
+                    .name(tokenClaims.get("name", String.class))
+                    .familyName(tokenClaims.get("family_name", String.class))
+                    .givenName(tokenClaims.get("given_name", String.class))
+                    .claims(tokenClaims)
+                    .build());
+          } catch (ExpiredJwtException
+              | UnsupportedJwtException
+              | MalformedJwtException
+              | SignatureException
+              | IllegalArgumentException exception) {
+            sink.error(exception);
+            return;
+          }
+        });
   }
 }

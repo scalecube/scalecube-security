@@ -1,6 +1,9 @@
 package io.scalecube.security;
 
-public interface JwtAuthenticator {
+import io.scalecube.security.auth.Authenticator;
+import reactor.core.publisher.Mono;
+
+public interface JwtAuthenticator extends Authenticator {
 
   /**
    * Authenticate a JWT token.
@@ -8,5 +11,5 @@ public interface JwtAuthenticator {
    * @param token jwt token.
    * @return security profile.
    */
-  Profile authenticate(String token);
+  Mono<Profile> authenticate(String token);
 }

@@ -22,12 +22,15 @@ import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 class JwtAuthenticatorTests {
 
   private static final Key hmacSecretKey =
       new SecretKeySpec(
           UUID.randomUUID().toString().getBytes(), SignatureAlgorithm.HS256.getJcaName());
+//  private static final Mono<Key> hmacSecretKeyMono = Mono.just(hmacSecretKey).cache();
   private static final KeyPair keys = generateRSAKeys();
 
   @Test
@@ -46,11 +49,14 @@ class JwtAuthenticatorTests {
 
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
 
-    Profile profile = sut.authenticate(token);
-
-    assertEquals("Tenant1", profile.tenant());
-    assertEquals("Trader1", profile.name());
-    assertEquals("1", profile.userId());
+    StepVerifier.create(sut.authenticate(token))
+        .assertNext(
+            profile -> {
+              assertEquals("Tenant1", profile.tenant());
+              assertEquals("Trader1", profile.name());
+              assertEquals("1", profile.userId());
+            })
+        .verifyComplete();
   }
 
   @Test
@@ -68,11 +74,14 @@ class JwtAuthenticatorTests {
 
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
 
-    Profile profile = sut.authenticate(token);
+    StepVerifier.create(sut.authenticate(token))
+    .assertNext(
+        profile -> {
 
     assertEquals("Tenant1", profile.tenant());
     assertEquals("Trader1", profile.name());
     assertEquals("1", profile.userId());
+        }).verifyComplete();
   }
 
   @Test
@@ -149,11 +158,13 @@ class JwtAuthenticatorTests {
 
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
 
-    Profile profile = sut.authenticate(token);
-
-    assertEquals("Tenant1", profile.tenant());
-    assertEquals("Trader1", profile.name());
-    assertEquals("1", profile.userId());
+    StepVerifier.create(sut.authenticate(token))
+    .assertNext(
+        profile -> {
+          assertEquals("Tenant1", profile.tenant());
+          assertEquals("Trader1", profile.name());
+          assertEquals("1", profile.userId());
+        }).verifyComplete();
   }
 
   @Test
@@ -197,11 +208,13 @@ class JwtAuthenticatorTests {
 
     JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
 
-    Profile profile = sut.authenticate(token);
-
-    assertEquals("Tenant1", profile.tenant());
-    assertNull(profile.name());
-    assertEquals("1", profile.userId());
+    StepVerifier.create(sut.authenticate(token))
+    .assertNext(
+        profile -> {
+          assertEquals("Tenant1", profile.tenant());
+          assertNull(profile.name());
+          assertEquals("1", profile.userId());
+        }).verifyComplete();
   }
 
   @Test
