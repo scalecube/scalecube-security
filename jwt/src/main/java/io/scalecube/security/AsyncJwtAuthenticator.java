@@ -32,7 +32,7 @@ public final class AsyncJwtAuthenticator implements JwtAuthenticator {
   }
 
   private static String jwtFromJwsToken(String token) {
-    return token.substring(0, token.lastIndexOf('.') - 1);
+    return token.substring(0, token.lastIndexOf('.') + 1);
   }
 
   @SuppressWarnings("rawtypes")
