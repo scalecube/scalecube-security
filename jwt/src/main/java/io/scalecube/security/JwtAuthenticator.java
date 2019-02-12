@@ -13,7 +13,12 @@ public interface JwtAuthenticator extends Authenticator {
    * @return security profile.
    */
   Mono<Profile> authenticate(String token);
-  
+
+  /**
+   * Create a profile from claims.
+   * @param tokenClaims the claims to parse
+   * @return a profile from the claims
+   */
   default Profile profileFromClaims(Claims tokenClaims) {
     return Profile.builder()
         .userId(tokenClaims.get("sub", String.class))
