@@ -10,13 +10,13 @@ import java.util.Map;
 import java.util.Set;
 import reactor.core.publisher.Mono;
 
-public class PermissionsAuthorizer implements Authorizer {
+public class Permissions implements Authorizer {
 
   public static class Builder {
 
     Map<String, Set<String>> permissions = new HashMap<>();
 
-    PermissionsAuthorizer.Builder permission(String action, String... subjects) {
+    Permissions.Builder grant(String action, String... subjects) {
       for (String subject : subjects) {
         permissions.computeIfAbsent(action, newAction -> new HashSet<>()).add(subject);
       }
@@ -24,13 +24,13 @@ public class PermissionsAuthorizer implements Authorizer {
     }
 
     public Authorizer build() {
-      return new PermissionsAuthorizer(this);
+      return new Permissions(this);
     }
   }
 
   private final Map<String, Set<String>> rolesForAllActions;
 
-  private PermissionsAuthorizer(Builder builder) {
+  private Permissions(Builder builder) {
     this.rolesForAllActions = new HashMap<>(builder.permissions.size());
     builder.permissions.forEach(
         (action, subjects) -> {
@@ -38,7 +38,7 @@ public class PermissionsAuthorizer implements Authorizer {
         });
   }
 
-  public static PermissionsAuthorizer.Builder builder() {
+  public static Permissions.Builder builder() {
     return new Builder();
   }
 

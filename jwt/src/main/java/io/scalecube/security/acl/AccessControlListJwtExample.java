@@ -26,35 +26,23 @@ public class AccessControlListJwtExample {
   public static void main(String[] args) throws NoSuchAlgorithmException {
 
     Authorizer permissions =
-        PermissionsAuthorizer.builder()
-            .permission("repo.create", OWNER, ADMIN)
-            .permission("blah", OWNER, ADMIN, MEMBER)
-            .permission("repo.remove", OWNER)
+        Permissions.builder()
+            .grant("repo.delete", OWNER)
+            .grant("repo-create", OWNER, ADMIN)
+            .grant("repo-read", OWNER, ADMIN, MEMBER)
             .build();
 
     KeyGenerator kg = KeyGenerator.getInstance("HmacSHA256");
     Key key = kg.generateKey();
 
     JwtKeyResolver jwtKeyResolver = (m -> "1".equals(m.get("kid")) ? key : null);
-
     Authenticator authenticator = new DefaultJwtAuthenticator(jwtKeyResolver);
 
-    //
-    //    Mono<Key> monoKey = Mono.create(service -> {
-    //      try {
-    //        Thread.sleep(100);
-    //      } catch (InterruptedException ignoredException) {
-    //        // TODO Auto-generated catch block
-    //        ignoredException.printStackTrace();
-    //      };
-    //      service.success(key);
-    //    });
-    //
-    //    AsyncJwtKeyResolver asyncJwtKeyResolver = kid-> monoKey;
-    //    Authenticator authenticator1 = new AsyncJwtAuthenticator(asyncJwtKeyResolver);
-
     AccessControl control =
-        BaseAccessControl.builder().authenticator(authenticator).authorizer(permissions).build();
+        BaseAccessControl.builder()
+        .authenticator(authenticator)
+        .permissions(permissions)
+        .build();
 
     String token =
         Jwts.builder()
@@ -66,6 +54,7 @@ public class AccessControlListJwtExample {
             .claim("roles", OWNER)
             .signWith(key)
             .compact();
+    
     control.tryAccess(token, "repo.create").subscribe(System.out::println, System.err::println);
   }
 }

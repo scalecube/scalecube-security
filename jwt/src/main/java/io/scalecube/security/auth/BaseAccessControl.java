@@ -12,7 +12,7 @@ public class BaseAccessControl implements AccessControl {
     Authenticator authenticator;
     Authorizer authorizer;
 
-    public Builder authorizer(Authorizer authorizer) {
+    public Builder permissions(Authorizer authorizer) {
       this.authorizer = authorizer;
       return this;
     }
