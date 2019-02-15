@@ -25,23 +25,20 @@ public class AccessControlListJwtExample {
    */
   public static void main(String[] args) throws NoSuchAlgorithmException {
 
-    Authorizer permissions =
-        Permissions.builder()
-            .grant("repo.delete", OWNER)
-            .grant("repo-create", OWNER, ADMIN)
-            .grant("repo-read", OWNER, ADMIN, MEMBER)
-            .build();
-
     KeyGenerator kg = KeyGenerator.getInstance("HmacSHA256");
     Key key = kg.generateKey();
 
     JwtKeyResolver jwtKeyResolver = (m -> "1".equals(m.get("kid")) ? key : null);
     Authenticator authenticator = new DefaultJwtAuthenticator(jwtKeyResolver);
 
-    AccessControl control =
+    AccessControl acl =
         BaseAccessControl.builder()
         .authenticator(authenticator)
-        .permissions(permissions)
+        .permissions(Permissions.builder()
+            .grant("repo.delete", OWNER)
+            .grant("repo-create", OWNER, ADMIN)
+            .grant("repo-read", OWNER, ADMIN, MEMBER)
+            .build())
         .build();
 
     String token =
@@ -49,12 +46,12 @@ public class AccessControlListJwtExample {
             .setHeaderParam("kid", "1")
             .claim("sub", "UID123456789")
             .claim("aud", "scalecube")
-            .claim("email", "myemail@example.com")
-            .claim("name", "ronen")
+            .claim("email", "ron@scalecube.io")
+            .claim("name", "ron")
             .claim("roles", OWNER)
             .signWith(key)
             .compact();
     
-    control.tryAccess(token, "repo.create").subscribe(System.out::println, System.err::println);
+    acl.access(token, "repo.create").subscribe(System.out::println, System.err::println);
   }
 }

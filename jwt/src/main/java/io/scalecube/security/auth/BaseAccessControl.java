@@ -37,7 +37,7 @@ public class BaseAccessControl implements AccessControl {
   }
 
   @Override
-  public Mono<Profile> tryAccess(String identity, String action) {
+  public Mono<Profile> access(String identity, String action) {
     return authenticator
         .authenticate(identity)
         .switchIfEmpty(

@@ -3,7 +3,7 @@ package io.scalecube.security.acl;
 
 /**
  *  An approval of a mode of access to a resource.
- *  @see io.scalecube.security.auth.AccessControl#tryAccess(String, String)
+ *  @see io.scalecube.security.auth.AccessControl#access(String, String)
  */
 public class Permission {
 

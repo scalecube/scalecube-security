@@ -11,5 +11,5 @@ public interface AccessControl {
    * @param action the action name
    * @return A mono with active profile or with an error.
    */
-  Mono<Profile> tryAccess(String identity, String action);
+  Mono<Profile> access(String identity, String action);
 }
