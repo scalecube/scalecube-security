@@ -39,11 +39,11 @@ public class DefaultAccessControl implements AccessControl {
   }
 
   @Override
-  public Mono<Profile> access(String identity, String action) {
+  public Mono<Profile> access(String token, String resource) {
     return authenticator
-        .authenticate(identity)
+        .authenticate(token)
         .switchIfEmpty(
             Mono.error(() -> new AuthenticationException("Authentication Failure", null)))
-        .flatMap(profile -> authorizator.authorize(profile, action));
+        .flatMap(profile -> authorizator.authorize(profile, resource));
   }
 }
