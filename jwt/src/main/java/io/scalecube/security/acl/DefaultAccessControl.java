@@ -39,7 +39,7 @@ public class DefaultAccessControl implements AccessControl {
   }
 
   @Override
-  public Mono<Profile> access(String token, String resource) {
+  public Mono<Profile> check(String token, String resource) {
     return authenticator
         .authenticate(token)
         .switchIfEmpty(

@@ -26,7 +26,7 @@ public class AccessControlTest {
   private static final String MEMBER = "member";
   
   private static SecretKey key;
-  private static DefaultAccessControl acl;
+  private static DefaultAccessControl accessContorl;
 
   @BeforeAll
   public static void setUp() throws Exception {
@@ -41,7 +41,7 @@ public class AccessControlTest {
             .grant(RESOURCE_READ, OWNER, ADMIN, MEMBER)
             .build();
 
-    acl =
+    accessContorl =
         DefaultAccessControl.builder()
             .authenticator(authenticator)
             .permissions(permissions)
@@ -62,7 +62,7 @@ public class AccessControlTest {
             .signWith(key)
             .compact();
 
-    StepVerifier.create(acl.access(token, RESOURCE_CREATE))
+    StepVerifier.create(accessContorl.check(token, RESOURCE_CREATE))
         .assertNext(
             profile -> {
               assertEquals(profile.tenant(), "scalecube");
@@ -85,7 +85,7 @@ public class AccessControlTest {
             .signWith(key)
             .compact();
 
-    StepVerifier.create(acl.access(token, RESOURCE_DELETE))
+    StepVerifier.create(accessContorl.check(token, RESOURCE_DELETE))
         .expectError(AccessControlException.class)
         .verify();
   }

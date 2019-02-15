@@ -11,5 +11,5 @@ public interface AccessControl {
    * @param resource the action name
    * @return A mono with active profile or with an error.
    */
-  Mono<Profile> access(String token, String resource);
+  Mono<Profile> check(String token, String resource);
 }
