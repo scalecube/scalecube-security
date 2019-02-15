@@ -53,9 +53,9 @@ public class Profile {
   }
 
   public Object claim(String name) {
-    return this.claims.get(name);
+    return this.claims.getOrDefault(name, null);
   }
-  
+
   public Map<String, Object> claims() {
     return claims;
   }

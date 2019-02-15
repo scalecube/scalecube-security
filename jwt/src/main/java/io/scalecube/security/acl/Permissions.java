@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono;
  *     - role1
  *     - role2
  * </pre>
- * Group/Role names are trimmed of whitespace and lowercased.
  */
 public class Permissions implements Authorizer {
 
@@ -35,12 +34,15 @@ public class Permissions implements Authorizer {
      * grant access to list of roles for a certain action.
      *
      * @param resourceName name or topic of granting access.
-     * @param subjects or roles allowed to access or do an action.
+     * @param roles or roles allowed to access or do an action names are trimmed of whitespace and
+     *     lowercased.
      * @return builder.
      */
-    public Permissions.Builder grant(String resourceName, String... subjects) {
-      for (String subject : subjects) {
-        permissions.computeIfAbsent(resourceName, newAction -> new HashSet<>()).add(subject);
+    public Permissions.Builder grant(String resourceName, String... roles) {
+      for (String subject : roles) {
+        permissions
+            .computeIfAbsent(resourceName, newAction -> new HashSet<>())
+            .add(subject.trim().toLowerCase());
       }
       return this;
     }
@@ -68,7 +70,7 @@ public class Permissions implements Authorizer {
   }
 
   private static boolean isInRole(Profile profile, Set<String> roles) {
-    return roles.contains(profile.claims().getOrDefault("roles", null));
+    return roles.contains(profile.claim("roles"));
   }
 
   @Override
