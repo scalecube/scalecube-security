@@ -13,16 +13,19 @@ import reactor.core.publisher.Mono;
 /**
  * This is a helper class for setting up an immutable Permissions object.
  *
- * someRoot:
+ * <pre>
+ * Permissions:
  *   name: resourceName
  *   permissions:
  *     allowed:
  *     - role1
  *     - role2
- *     
+ * </pre>
  * Group/Role names are trimmed of whitespace and lowercased.
  */
 public class Permissions implements Authorizer {
+
+  private final Map<String, Set<String>> rolesForAllResources;
 
   public static class Builder {
 
@@ -31,13 +34,13 @@ public class Permissions implements Authorizer {
     /**
      * grant access to list of roles for a certain action.
      *
-     * @param action name or topic of granting access.
+     * @param resourceName name or topic of granting access.
      * @param subjects or roles allowed to access or do an action.
      * @return builder.
      */
-    public Permissions.Builder grant(String action, String... subjects) {
+    public Permissions.Builder grant(String resourceName, String... subjects) {
       for (String subject : subjects) {
-        permissions.computeIfAbsent(action, newAction -> new HashSet<>()).add(subject);
+        permissions.computeIfAbsent(resourceName, newAction -> new HashSet<>()).add(subject);
       }
       return this;
     }
@@ -47,13 +50,11 @@ public class Permissions implements Authorizer {
     }
   }
 
-  private final Map<String, Set<String>> rolesForAllActions;
-
   private Permissions(Builder builder) {
-    this.rolesForAllActions = new HashMap<>(builder.permissions.size());
+    this.rolesForAllResources = new HashMap<>(builder.permissions.size());
     builder.permissions.forEach(
         (action, subjects) -> {
-          this.rolesForAllActions.put(action, new HashSet<>(subjects));
+          this.rolesForAllResources.put(action, new HashSet<>(subjects));
         });
   }
 
@@ -61,9 +62,9 @@ public class Permissions implements Authorizer {
     return new Builder();
   }
 
-  private static Set<String> rolesByAction(
-      final Map<String, Set<String>> permissionsByAction, String action) {
-    return permissionsByAction.getOrDefault(action, Collections.emptySet());
+  private static Set<String> rolesByResource(
+      final Map<String, Set<String>> permissionsByAction, String resource) {
+    return permissionsByAction.getOrDefault(resource, Collections.emptySet());
   }
 
   private static boolean isInRole(Profile profile, Set<String> roles) {
@@ -71,9 +72,9 @@ public class Permissions implements Authorizer {
   }
 
   @Override
-  public Mono<Profile> authorize(Profile profile, String action) {
+  public Mono<Profile> authorize(Profile profile, String resource) {
     return Mono.just(profile)
-        .filter(p -> isInRole(p, rolesByAction(rolesForAllActions, action)))
+        .filter(p -> isInRole(p, rolesByResource(rolesForAllResources, resource)))
         .switchIfEmpty(Mono.error(() -> new AccessControlException("Permission denied")));
   }
 }
