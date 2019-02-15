@@ -1,5 +1,6 @@
-package io.scalecube.security;
+package io.scalecube.security.acl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.jsonwebtoken.Jwts;
 import io.scalecube.security.DefaultJwtAuthenticator;
 import io.scalecube.security.JwtKeyResolver;
@@ -10,8 +11,10 @@ import io.scalecube.security.api.Authenticator;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.KeyGenerator;
+import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
-public class AccessControlListJwtExample {
+public class AccessControlTest {
 
   private static final String OWNER = "owner";
   private static final String ADMIN = "admin";
@@ -23,7 +26,8 @@ public class AccessControlListJwtExample {
    * @param args ignored
    * @throws NoSuchAlgorithmException when HmacSHA256 is not supported
    */
-  public static void main(String[] args) throws NoSuchAlgorithmException {
+  @Test
+  public void shouldGrantAccess() throws NoSuchAlgorithmException {
 
     KeyGenerator kg = KeyGenerator.getInstance("HmacSHA256");
     Key key = kg.generateKey();
@@ -52,6 +56,13 @@ public class AccessControlListJwtExample {
             .signWith(key)
             .compact();
     
-    acl.access(token, "repo-create").subscribe(System.out::println, System.err::println);
+    StepVerifier.create(acl.access(token, "repo-create"))
+    .assertNext(
+        profile -> {
+          assertEquals(profile.tenant(), "scalecube");
+          assertEquals(profile.claim("roles"), OWNER);
+        })
+    .verifyComplete();
+   
   }
 }

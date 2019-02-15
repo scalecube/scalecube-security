@@ -52,6 +52,10 @@ public class Profile {
     return givenName;
   }
 
+  public Object claim(String name) {
+    return this.claims.get(name);
+  }
+  
   public Map<String, Object> claims() {
     return claims;
   }
