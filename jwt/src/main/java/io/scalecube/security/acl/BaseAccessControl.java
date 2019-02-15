@@ -1,7 +1,8 @@
-package io.scalecube.security.auth;
+package io.scalecube.security.acl;
 
 import io.scalecube.security.AuthenticationException;
 import io.scalecube.security.Profile;
+import io.scalecube.security.auth.Authenticator;
 import reactor.core.publisher.Mono;
 
 public class BaseAccessControl implements AccessControl {

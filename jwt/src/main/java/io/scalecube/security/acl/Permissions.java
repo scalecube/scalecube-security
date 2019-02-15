@@ -1,7 +1,6 @@
 package io.scalecube.security.acl;
 
 import io.scalecube.security.Profile;
-import io.scalecube.security.auth.Authorizer;
 import java.security.AccessControlException;
 import java.util.Collections;
 import java.util.HashMap;
