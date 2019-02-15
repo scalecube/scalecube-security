@@ -1,11 +1,12 @@
 package io.scalecube.security.acl;
 
 import io.scalecube.security.AuthenticationException;
-import io.scalecube.security.Profile;
-import io.scalecube.security.auth.Authenticator;
+import io.scalecube.security.api.Authenticator;
+import io.scalecube.security.api.Authorizer;
+import io.scalecube.security.api.Profile;
 import reactor.core.publisher.Mono;
 
-public class BaseAccessControl implements AccessControl {
+public class DefaultAccessControl implements AccessControl {
   Authenticator authenticator;
   Authorizer authorizator;
 
@@ -23,18 +24,18 @@ public class BaseAccessControl implements AccessControl {
       return this;
     }
 
-    public BaseAccessControl build() {
-      return new BaseAccessControl(this);
+    public DefaultAccessControl build() {
+      return new DefaultAccessControl(this);
     }
   }
 
-  public BaseAccessControl(Builder builder) {
+  public DefaultAccessControl(Builder builder) {
     this.authenticator = builder.authenticator;
     this.authorizator = builder.authorizer;
   }
 
-  public static BaseAccessControl.Builder builder() {
-    return new BaseAccessControl.Builder();
+  public static DefaultAccessControl.Builder builder() {
+    return new DefaultAccessControl.Builder();
   }
 
   @Override

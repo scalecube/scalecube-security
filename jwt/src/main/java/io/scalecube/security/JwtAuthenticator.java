@@ -1,7 +1,8 @@
 package io.scalecube.security;
 
 import io.jsonwebtoken.Claims;
-import io.scalecube.security.auth.Authenticator;
+import io.scalecube.security.api.Authenticator;
+import io.scalecube.security.api.Profile;
 import reactor.core.publisher.Mono;
 
 public interface JwtAuthenticator extends Authenticator {

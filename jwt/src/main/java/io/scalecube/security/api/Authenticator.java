@@ -1,6 +1,5 @@
-package io.scalecube.security.auth;
+package io.scalecube.security.api;
 
-import io.scalecube.security.Profile;
 import reactor.core.publisher.Mono;
 
 @FunctionalInterface

@@ -1,6 +1,6 @@
 package io.scalecube.security.acl;
 
-import io.scalecube.security.Profile;
+import io.scalecube.security.api.Profile;
 import reactor.core.publisher.Mono;
 
 public interface AccessControl {

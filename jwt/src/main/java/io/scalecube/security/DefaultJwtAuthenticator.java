@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
+import io.scalecube.security.api.Profile;
 import reactor.core.publisher.Mono;
 
 public final class DefaultJwtAuthenticator implements JwtAuthenticator {

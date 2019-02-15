@@ -1,9 +1,12 @@
-package io.scalecube.security.acl;
+package io.scalecube.security;
 
 import io.jsonwebtoken.Jwts;
 import io.scalecube.security.DefaultJwtAuthenticator;
 import io.scalecube.security.JwtKeyResolver;
-import io.scalecube.security.auth.Authenticator;
+import io.scalecube.security.acl.AccessControl;
+import io.scalecube.security.acl.DefaultAccessControl;
+import io.scalecube.security.acl.Permissions;
+import io.scalecube.security.api.Authenticator;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.KeyGenerator;
@@ -29,7 +32,7 @@ public class AccessControlListJwtExample {
     Authenticator authenticator = new DefaultJwtAuthenticator(jwtKeyResolver);
 
     AccessControl acl =
-        BaseAccessControl.builder()
+        DefaultAccessControl.builder()
         .authenticator(authenticator)
         .permissions(Permissions.builder()
             .grant("repo.delete", OWNER)
@@ -49,6 +52,6 @@ public class AccessControlListJwtExample {
             .signWith(key)
             .compact();
     
-    acl.access(token, "repo.create").subscribe(System.out::println, System.err::println);
+    acl.access(token, "repo-create").subscribe(System.out::println, System.err::println);
   }
 }

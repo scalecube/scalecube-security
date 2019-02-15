@@ -1,6 +1,7 @@
 package io.scalecube.security.acl;
 
-import io.scalecube.security.Profile;
+import io.scalecube.security.api.Authorizer;
+import io.scalecube.security.api.Profile;
 import java.security.AccessControlException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,7 +16,7 @@ public class Permissions implements Authorizer {
 
     Map<String, Set<String>> permissions = new HashMap<>();
 
-    Permissions.Builder grant(String action, String... subjects) {
+    public Permissions.Builder grant(String action, String... subjects) {
       for (String subject : subjects) {
         permissions.computeIfAbsent(action, newAction -> new HashSet<>()).add(subject);
       }

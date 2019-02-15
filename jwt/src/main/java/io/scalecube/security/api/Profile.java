@@ -1,4 +1,4 @@
-package io.scalecube.security;
+package io.scalecube.security.api;
 
 import java.util.Map;
 
