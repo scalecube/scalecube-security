@@ -15,9 +15,16 @@ import reactor.test.StepVerifier;
 
 public class AccessControlTest {
 
+  // user permissions 
+  private static final String RESOURCE_READ = "resource/read";
+  private static final String RESOURCE_CREATE = "resource/create";
+  private static final String RESOURCE_DELETE = "resource/delete";
+  
+  // user roles
   private static final String OWNER = "owner";
   private static final String ADMIN = "admin";
   private static final String MEMBER = "member";
+  
   private static SecretKey key;
   private static DefaultAccessControl acl;
 
@@ -29,9 +36,9 @@ public class AccessControlTest {
 
     Authorizer permissions =
         Permissions.builder()
-            .grant("repo.delete", OWNER)
-            .grant("repo-create", OWNER, ADMIN)
-            .grant("repo-read", OWNER, ADMIN, MEMBER)
+            .grant(RESOURCE_DELETE, OWNER)
+            .grant(RESOURCE_CREATE, OWNER, ADMIN)
+            .grant(RESOURCE_READ, OWNER, ADMIN, MEMBER)
             .build();
 
     acl =
@@ -55,7 +62,7 @@ public class AccessControlTest {
             .signWith(key)
             .compact();
 
-    StepVerifier.create(acl.access(token, "repo-create"))
+    StepVerifier.create(acl.access(token, RESOURCE_CREATE))
         .assertNext(
             profile -> {
               assertEquals(profile.tenant(), "scalecube");
@@ -78,7 +85,7 @@ public class AccessControlTest {
             .signWith(key)
             .compact();
 
-    StepVerifier.create(acl.access(token, "repo-delete"))
+    StepVerifier.create(acl.access(token, RESOURCE_DELETE))
         .expectError(AccessControlException.class)
         .verify();
   }

@@ -10,6 +10,18 @@ import java.util.Map;
 import java.util.Set;
 import reactor.core.publisher.Mono;
 
+/**
+ * This is a helper class for setting up an immutable Permissions object.
+ *
+ * someRoot:
+ *   name: resourceName
+ *   permissions:
+ *     allowed:
+ *     - role1
+ *     - role2
+ *     
+ * Group/Role names are trimmed of whitespace and lowercased.
+ */
 public class Permissions implements Authorizer {
 
   public static class Builder {
