@@ -16,6 +16,13 @@ public class Permissions implements Authorizer {
 
     Map<String, Set<String>> permissions = new HashMap<>();
 
+    /**
+     * grant access to list of roles for a certain action.
+     *
+     * @param action name or topic of granting access.
+     * @param subjects or roles allowed to access or do an action.
+     * @return builder.
+     */
     public Permissions.Builder grant(String action, String... subjects) {
       for (String subject : subjects) {
         permissions.computeIfAbsent(action, newAction -> new HashSet<>()).add(subject);
