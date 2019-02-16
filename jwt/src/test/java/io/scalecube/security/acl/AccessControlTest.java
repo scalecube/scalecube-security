@@ -54,10 +54,6 @@ public class AccessControlTest {
     String token =
         Jwts.builder()
             .setHeaderParam("kid", "1")
-            .claim("sub", "UID123456789")
-            .claim("aud", "scalecube")
-            .claim("email", "ron@scalecube.io")
-            .claim("name", "ron")
             .claim("roles", OWNER)
             .signWith(key)
             .compact();
@@ -65,7 +61,6 @@ public class AccessControlTest {
     StepVerifier.create(accessContorl.check(token, RESOURCE_CREATE))
         .assertNext(
             profile -> {
-              assertEquals(profile.tenant(), "scalecube");
               assertEquals(profile.claim("roles"), OWNER);
             })
         .verifyComplete();
@@ -77,10 +72,6 @@ public class AccessControlTest {
     String token =
         Jwts.builder()
             .setHeaderParam("kid", "1")
-            .claim("sub", "UID123456789")
-            .claim("aud", "scalecube")
-            .claim("email", "ron@scalecube.io")
-            .claim("name", "ron")
             .claim("roles", MEMBER)
             .signWith(key)
             .compact();
