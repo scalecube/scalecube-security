@@ -1,4 +1,4 @@
-package io.scalecube.security;
+package io.scalecube.security.jwt;
 
 /**
  * This class encapsulates all authentication exceptions. This will allow us to replace the internal

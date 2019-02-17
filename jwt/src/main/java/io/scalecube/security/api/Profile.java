@@ -1,4 +1,4 @@
-package io.scalecube.security;
+package io.scalecube.security.api;
 
 import java.util.Map;
 
@@ -50,6 +50,10 @@ public class Profile {
 
   public String givenName() {
     return givenName;
+  }
+
+  public Object claim(String name) {
+    return this.claims.getOrDefault(name, null);
   }
 
   public Map<String, Object> claims() {
