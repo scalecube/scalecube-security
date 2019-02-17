@@ -2,9 +2,8 @@ package io.scalecube.security.acl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.jsonwebtoken.Jwts;
-import io.scalecube.security.DefaultJwtAuthenticator;
 import io.scalecube.security.api.Authenticator;
-import io.scalecube.security.api.Authorizer;
+import io.scalecube.security.jwt.DefaultJwtAuthenticator;
 import java.security.AccessControlException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.KeyGenerator;
@@ -34,17 +33,15 @@ public class AccessControlTest {
     Authenticator authenticator =
         new DefaultJwtAuthenticator(m -> "1".equals(m.get("kid")) ? key : null);
 
-    Authorizer permissions =
-        Permissions.builder()
-            .grant(RESOURCE_DELETE, OWNER)
-            .grant(RESOURCE_CREATE, OWNER, ADMIN)
-            .grant(RESOURCE_READ, OWNER, ADMIN, MEMBER)
-            .build();
-
     accessContorl =
         DefaultAccessControl.builder()
             .authenticator(authenticator)
-            .permissions(permissions)
+            .authorizer(
+                Permissions.builder()
+                    .grant(RESOURCE_DELETE, OWNER)
+                    .grant(RESOURCE_CREATE, OWNER, ADMIN)
+                    .grant(RESOURCE_READ, OWNER, ADMIN, MEMBER)
+                    .build())
             .build();
   }
 

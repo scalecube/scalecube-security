@@ -7,6 +7,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
+import io.scalecube.security.jwt.DefaultJwtAuthenticator;
+import io.scalecube.security.jwt.JwtAuthenticator;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

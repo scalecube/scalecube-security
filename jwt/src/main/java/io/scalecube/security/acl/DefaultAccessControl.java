@@ -1,9 +1,10 @@
 package io.scalecube.security.acl;
 
-import io.scalecube.security.AuthenticationException;
+import io.scalecube.security.api.AccessControl;
 import io.scalecube.security.api.Authenticator;
 import io.scalecube.security.api.Authorizer;
 import io.scalecube.security.api.Profile;
+import io.scalecube.security.jwt.AuthenticationException;
 import reactor.core.publisher.Mono;
 
 public class DefaultAccessControl implements AccessControl {
@@ -14,7 +15,7 @@ public class DefaultAccessControl implements AccessControl {
     private Authenticator authenticator;
     private Authorizer authorizer;
 
-    public Builder permissions(Authorizer authorizer) {
+    public Builder authorizer(Authorizer authorizer) {
       this.authorizer = authorizer;
       return this;
     }
