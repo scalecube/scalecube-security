@@ -28,7 +28,7 @@ public class Permissions implements Authorizer {
 
   public static class Builder {
 
-    Map<String, Set<String>> permissions = new HashMap<>();
+    private final Map<String, Set<String>> permissions = new HashMap<>();
 
     /**
      * grant access to list of roles for a certain action.

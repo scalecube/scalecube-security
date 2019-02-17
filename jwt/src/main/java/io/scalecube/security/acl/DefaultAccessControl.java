@@ -7,12 +7,12 @@ import io.scalecube.security.api.Profile;
 import reactor.core.publisher.Mono;
 
 public class DefaultAccessControl implements AccessControl {
-  Authenticator authenticator;
-  Authorizer authorizator;
+  private final Authenticator authenticator;
+  private final Authorizer authorizator;
 
   public static class Builder {
-    Authenticator authenticator;
-    Authorizer authorizer;
+    private Authenticator authenticator;
+    private Authorizer authorizer;
 
     public Builder permissions(Authorizer authorizer) {
       this.authorizer = authorizer;
