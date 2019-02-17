@@ -1,4 +1,4 @@
-package io.scalecube.security;
+package io.scalecube.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwsHeader;
