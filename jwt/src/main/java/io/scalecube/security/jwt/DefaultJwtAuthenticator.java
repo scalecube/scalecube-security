@@ -18,8 +18,9 @@ public final class DefaultJwtAuthenticator implements JwtAuthenticator {
   @Override
   public Mono<Profile> authenticate(String token) {
     return Mono.just(token)
-        .map(unparsedToken -> jwtParser.parseClaimsJws(unparsedToken))
+        .map(jwtParser::parseClaimsJws)
         .map(Jws<Claims>::getBody)
-        .map(this::profileFromClaims);
+        .map(this::profileFromClaims)
+        .onErrorMap(AuthenticationException::new);
   }
 }
