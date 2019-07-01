@@ -2,6 +2,7 @@ package io.scalecube.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -22,6 +23,7 @@ import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class JwtAuthenticatorTests {
@@ -46,7 +48,7 @@ class JwtAuthenticatorTests {
             .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> Mono.just(hmacSecretKey));
 
     StepVerifier.create(sut.authenticate(token))
         .assertNext(
@@ -71,7 +73,7 @@ class JwtAuthenticatorTests {
             .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> hmacSecretKey);
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> Mono.just(hmacSecretKey));
 
     StepVerifier.create(sut.authenticate(token))
         .assertNext(
@@ -100,9 +102,10 @@ class JwtAuthenticatorTests {
     JwtAuthenticator sut =
         new DefaultJwtAuthenticator(
             map ->
-                new SecretKeySpec(
-                    UUID.randomUUID().toString().getBytes(),
-                    SignatureAlgorithm.HS256.getJcaName()));
+                Mono.just(
+                    new SecretKeySpec(
+                        UUID.randomUUID().toString().getBytes(),
+                        SignatureAlgorithm.HS256.getJcaName())));
     StepVerifier.create(sut.authenticate(token))
         .expectErrorSatisfies(
             actualException ->
@@ -128,12 +131,8 @@ class JwtAuthenticatorTests {
             map ->
                 Optional.ofNullable(map.get("kid"))
                     .filter(String.class::isInstance)
-                    .map(
-                        s -> {
-                          // Safe to cast to string, use the kid property to fetch the key
-                          return hmacSecretKey;
-                        })
-                    .orElse(null));
+                    .map(s -> Mono.just(hmacSecretKey))
+                    .orElse(Mono.empty()));
 
     StepVerifier.create(sut.authenticate(token))
         .expectErrorSatisfies(
@@ -156,7 +155,7 @@ class JwtAuthenticatorTests {
             .signWith(keys.getPrivate())
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> Mono.just(keys.getPublic()));
 
     StepVerifier.create(sut.authenticate(token))
         .assertNext(
@@ -184,12 +183,8 @@ class JwtAuthenticatorTests {
             map ->
                 Optional.ofNullable(map.get("kid"))
                     .filter(String.class::isInstance)
-                    .map(
-                        s -> {
-                          // Safe to cast to string, use the kid property to fetch the key
-                          return hmacSecretKey;
-                        })
-                    .orElse(null));
+                    .map(s -> Mono.just(hmacSecretKey))
+                    .orElse(Mono.empty()));
 
     StepVerifier.create(sut.authenticate(token))
         .expectErrorSatisfies(
@@ -208,7 +203,7 @@ class JwtAuthenticatorTests {
             .signWith(keys.getPrivate())
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> keys.getPublic());
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> Mono.just(keys.getPublic()));
 
     StepVerifier.create(sut.authenticate(token))
         .assertNext(
@@ -229,12 +224,8 @@ class JwtAuthenticatorTests {
             map ->
                 Optional.ofNullable(map.get("kid"))
                     .filter(String.class::isInstance)
-                    .map(
-                        s -> {
-                          // Safe to cast to string, use the kid property to fetch the key
-                          return hmacSecretKey;
-                        })
-                    .orElse(null));
+                    .map(s -> Mono.just(hmacSecretKey))
+                    .orElse(Mono.empty()));
 
     StepVerifier.create(sut.authenticate(token))
         .expectErrorSatisfies(
@@ -252,7 +243,7 @@ class JwtAuthenticatorTests {
             .signWith(keys.getPrivate())
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> null);
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> Mono.empty());
     StepVerifier.create(sut.authenticate(token))
         .expectErrorSatisfies(
             actualException ->
@@ -276,7 +267,7 @@ class JwtAuthenticatorTests {
             .signWith(hmacSecretKey)
             .compact();
 
-    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> null);
+    JwtAuthenticator sut = new DefaultJwtAuthenticator(map -> Mono.empty());
     StepVerifier.create(sut.authenticate(token))
         .expectErrorSatisfies(
             actualException ->
