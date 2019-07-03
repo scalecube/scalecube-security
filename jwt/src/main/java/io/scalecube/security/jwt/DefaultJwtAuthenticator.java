@@ -30,8 +30,8 @@ public final class DefaultJwtAuthenticator implements JwtAuthenticator {
           return jwtKeyResolver
               .resolve((Map<String, Object>) claims.getHeader())
               .map(key -> parser.setSigningKey(key).parseClaimsJws(token).getBody())
-              .map(this::profileFromClaims)
-              .onErrorMap(AuthenticationException::new);
-        });
+              .map(this::profileFromClaims);
+        })
+        .onErrorMap(AuthenticationException::new);
   }
 }
