@@ -4,7 +4,7 @@ addons:
     - libxml-xpath-perl
 sudo: required
 language: java
-jdk: openjdk8
+jdk: openjdk11
 before_install:
 - "./src/main/scripts/ci/before-install.sh"
 - "./src/main/scripts/cd/before-deploy.sh"
@@ -21,3 +21,8 @@ deploy:
   - "./src/main/scripts/cd/release.sh"
   on:
     branch: master
+- provider: script
+  script:
+  - "./src/main/scripts/cd/release.sh"
+  on:
+    tags: true
