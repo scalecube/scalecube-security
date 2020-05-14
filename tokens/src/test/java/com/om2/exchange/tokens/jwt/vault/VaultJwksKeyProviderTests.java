@@ -151,14 +151,23 @@ class VaultJwksKeyProviderTests extends BaseTest {
   }
 
   private static String createIdentityKey(String vaultAddr) throws RestException {
+    return createIdentityKey(vaultAddr, "1m", "1m");
+  }
+
+  private static String createIdentityKey(
+      String vaultAddr, String rotationPeriod, String verificationTtl) throws RestException {
     String keyName = UUID.randomUUID().toString();
     int status =
         new Rest()
             .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
             .url(oidcKeyUrl(vaultAddr, keyName))
             .body(
-                ("{\"rotation_period\":\"1h\", "
-                        + "\"verification_ttl\": 0, "
+                ("{\"rotation_period\":\""
+                        + rotationPeriod
+                        + "\", "
+                        + "\"verification_ttl\": \""
+                        + verificationTtl
+                        + "\", "
                         + "\"allowed_client_ids\": \"*\", "
                         + "\"algorithm\": \"RS256\"}")
                     .getBytes())
@@ -172,12 +181,17 @@ class VaultJwksKeyProviderTests extends BaseTest {
   }
 
   private static String createIdentityRole(String vaultAddr, String keyName) throws RestException {
+    return createIdentityRole(vaultAddr, keyName, "1h");
+  }
+
+  private static String createIdentityRole(String vaultAddr, String keyName, String ttl)
+      throws RestException {
     String roleName = UUID.randomUUID().toString();
     int status =
         new Rest()
             .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
             .url(oidcRoleUrl(vaultAddr, roleName))
-            .body(("{\"key\":\"" + keyName + "\",\"ttl\": \"1h\"}").getBytes())
+            .body(("{\"key\":\"" + keyName + "\",\"ttl\": \"" + ttl + "\"}").getBytes())
             .post()
             .getStatus();
 
