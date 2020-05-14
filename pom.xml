@@ -25,6 +25,7 @@
 
   <modules>
     <module>jwt</module>
+    <module>tokens</module>
   </modules>
 
   <properties>
