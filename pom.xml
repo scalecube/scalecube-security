@@ -10,7 +10,7 @@
   </parent>
 
   <artifactId>scalecube-security-parent</artifactId>
-  <version>1.0.11</version>
+  <version>1.0.12-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>ScaleCube Security</name>
@@ -20,7 +20,7 @@
     <connection>scm:git:git@github.com:scalecube/scalecube-security.git</connection>
     <developerConnection>scm:git:git@github.com:scalecube/scalecube-security.git
     </developerConnection>
-    <tag>v1.0.11</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <modules>
