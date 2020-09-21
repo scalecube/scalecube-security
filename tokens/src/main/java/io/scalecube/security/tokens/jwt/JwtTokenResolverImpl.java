@@ -1,6 +1,8 @@
 package io.scalecube.security.tokens.jwt;
 
+import io.scalecube.security.tokens.jwt.jsonwebtoken.JsonwebtokenParserFactory;
 import java.security.Key;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,8 +20,8 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
 
   private final KeyProvider keyProvider;
   private final JwtTokenParserFactory tokenParserFactory;
-  private final int cleanupIntervalSec;
   private final Scheduler scheduler;
+  private final Duration cleanupInterval;
 
   private final Map<String, Mono<Key>> keyResolutions = new ConcurrentHashMap<>();
 
@@ -27,10 +29,9 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
    * Constructor.
    *
    * @param keyProvider key provider
-   * @param tokenParserFactory token parser factoty
    */
-  public JwtTokenResolverImpl(KeyProvider keyProvider, JwtTokenParserFactory tokenParserFactory) {
-    this(keyProvider, tokenParserFactory, 3600, Schedulers.newSingle("caching-key-provider", true));
+  public JwtTokenResolverImpl(KeyProvider keyProvider) {
+    this(keyProvider, new JsonwebtokenParserFactory(), newScheduler(), Duration.ofSeconds(60));
   }
 
   /**
@@ -38,17 +39,17 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
    *
    * @param keyProvider key provider
    * @param tokenParserFactory token parser factoty
-   * @param cleanupIntervalSec cleanup interval (in sec) for resolved cached keys
    * @param scheduler cleanup scheduler
+   * @param cleanupInterval cleanup interval for resolved cached keys
    */
   public JwtTokenResolverImpl(
       KeyProvider keyProvider,
       JwtTokenParserFactory tokenParserFactory,
-      int cleanupIntervalSec,
-      Scheduler scheduler) {
+      Scheduler scheduler,
+      Duration cleanupInterval) {
     this.keyProvider = keyProvider;
     this.tokenParserFactory = tokenParserFactory;
-    this.cleanupIntervalSec = cleanupIntervalSec;
+    this.cleanupInterval = cleanupInterval;
     this.scheduler = scheduler;
   }
 
@@ -107,12 +108,16 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
 
   private void scheduleCleanup(String kid, AtomicReference<Mono<Key>> computedValueHolder) {
     scheduler.schedule(
-        () -> cleanup(kid, computedValueHolder), cleanupIntervalSec, TimeUnit.SECONDS);
+        () -> cleanup(kid, computedValueHolder), cleanupInterval.toMillis(), TimeUnit.MILLISECONDS);
   }
 
   private void cleanup(String kid, AtomicReference<Mono<Key>> computedValueHolder) {
     if (computedValueHolder.get() != null) {
       keyResolutions.remove(kid, computedValueHolder.get());
     }
+  }
+
+  private static Scheduler newScheduler() {
+    return Schedulers.newElastic("token-resolver-cleaner", 60, true);
   }
 }

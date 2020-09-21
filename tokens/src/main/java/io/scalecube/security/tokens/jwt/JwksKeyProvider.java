@@ -1,5 +1,7 @@
 package io.scalecube.security.tokens.jwt;
 
+import static io.scalecube.security.tokens.jwt.Utils.toRsaPublicKey;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -24,9 +26,9 @@ public final class JwksKeyProvider implements KeyProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JwksKeyProvider.class);
 
-  private final Scheduler scheduler = Schedulers.newSingle("jwks-key-provider", true);
+  private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
-  private final ObjectMapper mapper;
+  private final Scheduler scheduler;
   private final String jwksUri;
   private final long connectTimeoutMillis;
   private final long readTimeoutMillis;
@@ -37,22 +39,21 @@ public final class JwksKeyProvider implements KeyProvider {
    * @param jwksUri jwksUri
    */
   public JwksKeyProvider(String jwksUri) {
-    this.jwksUri = jwksUri;
-    this.mapper = initMapper();
-    this.connectTimeoutMillis = Duration.ofSeconds(10).toMillis();
-    this.readTimeoutMillis = Duration.ofSeconds(10).toMillis();
+    this(jwksUri, newScheduler(), Duration.ofSeconds(10), Duration.ofSeconds(10));
   }
 
   /**
    * Constructor.
    *
    * @param jwksUri jwksUri
+   * @param scheduler scheduler
    * @param connectTimeout connectTimeout
    * @param readTimeout readTimeout
    */
-  public JwksKeyProvider(String jwksUri, Duration connectTimeout, Duration readTimeout) {
+  public JwksKeyProvider(
+      String jwksUri, Scheduler scheduler, Duration connectTimeout, Duration readTimeout) {
     this.jwksUri = jwksUri;
-    this.mapper = initMapper();
+    this.scheduler = scheduler;
     this.connectTimeoutMillis = connectTimeout.toMillis();
     this.readTimeoutMillis = readTimeout.toMillis();
   }
@@ -87,7 +88,7 @@ public final class JwksKeyProvider implements KeyProvider {
 
   private JwkInfoList toKeyList(InputStream stream) {
     try (InputStream inputStream = new BufferedInputStream(stream)) {
-      return mapper.readValue(inputStream, JwkInfoList.class);
+      return OBJECT_MAPPER.readValue(inputStream, JwkInfoList.class);
     } catch (IOException e) {
       LOGGER.error("[toKeyList] Exception occurred: {}", e.toString());
       throw new KeyProviderException(e);
@@ -98,10 +99,10 @@ public final class JwksKeyProvider implements KeyProvider {
     return list.keys().stream()
         .filter(k -> kid.equals(k.kid()))
         .findFirst()
-        .map(info -> Utils.getRsaPublicKey(info.modulus(), info.exponent()));
+        .map(info -> toRsaPublicKey(info.modulus(), info.exponent()));
   }
 
-  private static ObjectMapper initMapper() {
+  private static ObjectMapper newObjectMapper() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
@@ -110,5 +111,9 @@ public final class JwksKeyProvider implements KeyProvider {
     mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
     mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     return mapper;
+  }
+
+  private static Scheduler newScheduler() {
+    return Schedulers.newElastic("jwks-key-provider", 60, true);
   }
 }

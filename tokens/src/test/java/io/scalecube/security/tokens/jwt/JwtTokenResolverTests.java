@@ -1,7 +1,9 @@
 package io.scalecube.security.tokens.jwt;
 
-import java.io.IOException;
+import static io.scalecube.security.tokens.jwt.Utils.toRsaPublicKey;
+
 import java.security.Key;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -10,13 +12,14 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import reactor.test.scheduler.VirtualTimeScheduler;
 
-class JwtTokenResolverTests extends BaseTest {
+class JwtTokenResolverTests {
 
   private static final Map<String, Object> BODY = Collections.singletonMap("aud", "aud");
 
   @Test
-  void testTokenResolver() throws IOException {
+  void testTokenResolver() throws Exception {
     TokenWithKey tokenWithKey = new TokenWithKey("token-and-pubkey.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
@@ -32,7 +35,9 @@ class JwtTokenResolverTests extends BaseTest {
     KeyProvider keyProvider = Mockito.mock(KeyProvider.class);
     Mockito.when(keyProvider.findKey(tokenWithKey.kid)).thenReturn(Mono.just(tokenWithKey.key));
 
-    JwtTokenResolverImpl tokenResolver = new JwtTokenResolverImpl(keyProvider, tokenParserFactory);
+    JwtTokenResolverImpl tokenResolver =
+        new JwtTokenResolverImpl(
+            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
 
     // N times call resolve
     StepVerifier.create(tokenResolver.resolve(tokenWithKey.token).repeat(3))
@@ -45,7 +50,7 @@ class JwtTokenResolverTests extends BaseTest {
   }
 
   @Test
-  void testTokenResolverWithRotatingKey() throws IOException {
+  void testTokenResolverWithRotatingKey() throws Exception {
     TokenWithKey tokenWithKey = new TokenWithKey("token-and-pubkey.properties");
     TokenWithKey tokenWithKeyAfterRotation =
         new TokenWithKey("token-and-pubkey.after-rotation.properties");
@@ -70,7 +75,9 @@ class JwtTokenResolverTests extends BaseTest {
     Mockito.when(keyProvider.findKey(tokenWithKeyAfterRotation.kid))
         .thenReturn(Mono.just(tokenWithKeyAfterRotation.key));
 
-    JwtTokenResolverImpl tokenResolver = new JwtTokenResolverImpl(keyProvider, tokenParserFactory);
+    JwtTokenResolverImpl tokenResolver =
+        new JwtTokenResolverImpl(
+            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
 
     // Call normal token first
     StepVerifier.create(tokenResolver.resolve(tokenWithKey.token))
@@ -90,7 +97,7 @@ class JwtTokenResolverTests extends BaseTest {
   }
 
   @Test
-  void testTokenResolverWithWrongKey() throws IOException {
+  void testTokenResolverWithWrongKey() throws Exception {
     TokenWithKey tokenWithWrongKey = new TokenWithKey("token-and-wrong-pubkey.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
@@ -106,7 +113,9 @@ class JwtTokenResolverTests extends BaseTest {
     Mockito.when(keyProvider.findKey(tokenWithWrongKey.kid))
         .thenReturn(Mono.just(tokenWithWrongKey.key));
 
-    JwtTokenResolverImpl tokenResolver = new JwtTokenResolverImpl(keyProvider, tokenParserFactory);
+    JwtTokenResolverImpl tokenResolver =
+        new JwtTokenResolverImpl(
+            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
 
     // Must fail (retry N times)
     StepVerifier.create(tokenResolver.resolve(tokenWithWrongKey.token).retry(1))
@@ -118,7 +127,7 @@ class JwtTokenResolverTests extends BaseTest {
   }
 
   @Test
-  void testTokenResolverWhenKeyProviderFailing() throws IOException {
+  void testTokenResolverWhenKeyProviderFailing() throws Exception {
     TokenWithKey tokenWithKey = new TokenWithKey("token-and-pubkey.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
@@ -134,7 +143,9 @@ class JwtTokenResolverTests extends BaseTest {
     KeyProvider keyProvider = Mockito.mock(KeyProvider.class);
     Mockito.when(keyProvider.findKey(tokenWithKey.kid)).thenThrow(RuntimeException.class);
 
-    JwtTokenResolverImpl tokenResolver = new JwtTokenResolverImpl(keyProvider, tokenParserFactory);
+    JwtTokenResolverImpl tokenResolver =
+        new JwtTokenResolverImpl(
+            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
 
     // Must fail with "hola" (retry N times)
     StepVerifier.create(tokenResolver.resolve(tokenWithKey.token).retry(1)).expectError().verify();
@@ -149,13 +160,13 @@ class JwtTokenResolverTests extends BaseTest {
     final Key key;
     final String kid;
 
-    TokenWithKey(String s) throws IOException {
+    TokenWithKey(String s) throws Exception {
       ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
       Properties props = new Properties();
       props.load(classLoader.getResourceAsStream(s));
       this.token = props.getProperty("token");
       this.kid = props.getProperty("kid");
-      this.key = Utils.getRsaPublicKey(props.getProperty("n"), props.getProperty("e"));
+      this.key = toRsaPublicKey(props.getProperty("n"), props.getProperty("e"));
     }
   }
 }

@@ -22,7 +22,7 @@ public class Utils {
    * @param e exponent (b64 url encoded)
    * @return RSA public key instance
    */
-  public static Key getRsaPublicKey(String n, String e) {
+  public static Key toRsaPublicKey(String n, String e) {
     Decoder b64Decoder = Base64.getUrlDecoder();
     BigInteger modulus = new BigInteger(1, b64Decoder.decode(n));
     BigInteger exponent = new BigInteger(1, b64Decoder.decode(e));
