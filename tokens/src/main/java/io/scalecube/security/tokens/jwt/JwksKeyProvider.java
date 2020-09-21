@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.Key;
 import java.time.Duration;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -60,7 +61,8 @@ public final class JwksKeyProvider implements KeyProvider {
   public Mono<Key> findKey(String kid) {
     return Mono.defer(this::callJwksUri)
         .map(this::toKeyList)
-        .map(list -> findRsaKey(list, kid))
+        .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
+        .switchIfEmpty(Mono.error(new KeyProviderException("Key was not found, kid: " + kid)))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
         .subscribeOn(scheduler)
         .publishOn(scheduler);
@@ -74,9 +76,6 @@ public final class JwksKeyProvider implements KeyProvider {
           httpClient.setReadTimeout((int) readTimeoutMillis);
 
           int responseCode = httpClient.getResponseCode();
-          if (responseCode == 204) {
-            return null;
-          }
           if (responseCode != 200) {
             LOGGER.error("[callJwksUri][{}] Not expected response code: {}", jwksUri, responseCode);
             throw new KeyProviderException("Not expected response code: " + responseCode);
@@ -95,12 +94,11 @@ public final class JwksKeyProvider implements KeyProvider {
     }
   }
 
-  private Key findRsaKey(JwkInfoList list, String kid) {
+  private Optional<Key> findRsaKey(JwkInfoList list, String kid) {
     return list.keys().stream()
         .filter(k -> kid.equals(k.kid()))
         .findFirst()
-        .map(vaultJwk -> Utils.getRsaPublicKey(vaultJwk.modulus(), vaultJwk.exponent()))
-        .orElseThrow(() -> new KeyProviderException("Key was not found, kid: " + kid));
+        .map(vaultJwk -> Utils.getRsaPublicKey(vaultJwk.modulus(), vaultJwk.exponent()));
   }
 
   private static ObjectMapper initMapper() {
