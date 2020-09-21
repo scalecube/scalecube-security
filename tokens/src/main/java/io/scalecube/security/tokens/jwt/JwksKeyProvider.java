@@ -98,7 +98,7 @@ public final class JwksKeyProvider implements KeyProvider {
     return list.keys().stream()
         .filter(k -> kid.equals(k.kid()))
         .findFirst()
-        .map(vaultJwk -> Utils.getRsaPublicKey(vaultJwk.modulus(), vaultJwk.exponent()));
+        .map(info -> Utils.getRsaPublicKey(info.modulus(), info.exponent()));
   }
 
   private static ObjectMapper initMapper() {
