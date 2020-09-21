@@ -49,14 +49,20 @@
 
   <properties>
     <jjwt.version>0.11.1</jjwt.version>
-    <reactor.version>Dysprosium-SR7</reactor.version>
-    <junit.version>5.1.1</junit.version>
-    <mockito.version>2.24.5</mockito.version>
+    <reactor.version>Dysprosium-SR9</reactor.version>
+    <jackson.version>2.11.0</jackson.version>
+    <slf4j.version>1.7.30</slf4j.version>
+
+    <mockito.version>3.1.0</mockito.version>
     <hamcrest.version>1.3</hamcrest.version>
+    <junit-jupiter.version>5.4.2</junit-jupiter.version>
+    <vault-java-driver.version>5.0.0</vault-java-driver.version>
+    <testcontainers.version>1.14.0</testcontainers.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <!-- Reactor -->
       <dependency>
         <groupId>io.projectreactor</groupId>
         <artifactId>reactor-bom</artifactId>
@@ -64,6 +70,13 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Slf4j -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <!-- Jsonwebtoken -->
       <dependency>
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-api</artifactId>
@@ -79,6 +92,14 @@
         <artifactId>jjwt-jackson</artifactId>
         <version>${jjwt.version}</version>
       </dependency>
+      <!-- Jackson -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -87,19 +108,13 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
-      <version>${junit.version}</version>
+      <version>${junit-jupiter.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-junit-jupiter</artifactId>
-      <version>${mockito.version}</version>
+      <version>${junit-jupiter.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
