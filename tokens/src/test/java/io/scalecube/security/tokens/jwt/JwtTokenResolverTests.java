@@ -1,11 +1,5 @@
-package com.om2.exchange.tokens.jwt;
+package io.scalecube.security.tokens.jwt;
 
-import io.scalecube.security.tokens.jwt.JwtToken;
-import io.scalecube.security.tokens.jwt.JwtTokenParser;
-import io.scalecube.security.tokens.jwt.JwtTokenParserFactory;
-import io.scalecube.security.tokens.jwt.JwtTokenResolverImpl;
-import io.scalecube.security.tokens.jwt.KeyProvider;
-import io.scalecube.security.tokens.jwt.Utils;
 import java.io.IOException;
 import java.security.Key;
 import java.util.Collections;
@@ -19,7 +13,7 @@ import reactor.test.StepVerifier;
 
 class JwtTokenResolverTests extends BaseTest {
 
-  public static final Map<String, Object> BODY = Collections.singletonMap("aud", "aud");
+  private static final Map<String, Object> BODY = Collections.singletonMap("aud", "aud");
 
   @Test
   void testTokenResolver() throws IOException {
