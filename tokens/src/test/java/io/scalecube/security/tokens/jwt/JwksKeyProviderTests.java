@@ -1,16 +1,14 @@
-package com.om2.exchange.tokens.jwt.vault;
+package io.scalecube.security.tokens.jwt;
 
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import com.bettercloud.vault.rest.RestResponse;
-import com.om2.exchange.tokens.jwt.BaseTest;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwt;
 import io.jsonwebtoken.JwtParserBuilder;
 import io.jsonwebtoken.Jwts;
-import io.scalecube.security.tokens.jwt.vault.VaultJwksKeyProvider;
 import java.io.IOException;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -22,7 +20,7 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.vault.VaultContainer;
 import reactor.test.StepVerifier;
 
-class VaultJwksKeyProviderTests extends BaseTest {
+class JwksKeyProviderTests extends BaseTest {
 
   private static final String VAULT_TOKEN = "test";
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
@@ -54,14 +52,14 @@ class VaultJwksKeyProviderTests extends BaseTest {
     String token = generateIdentityToken(clientToken, roleName); // oidc/token
     String kid = getKid(token);
 
-    VaultJwksKeyProvider keyProvider = new VaultJwksKeyProvider(jwksUri(vaultAddr));
+    JwksKeyProvider keyProvider = new JwksKeyProvider(jwksUri(vaultAddr));
 
     StepVerifier.create(keyProvider.findKey(kid)).expectNextCount(1).expectComplete().verify();
   }
 
   @Test
   void testJwksKeysRetrievalKeyNotFound() {
-    VaultJwksKeyProvider keyProvider = new VaultJwksKeyProvider(jwksUri(vaultAddr));
+    JwksKeyProvider keyProvider = new JwksKeyProvider(jwksUri(vaultAddr));
 
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorMatches(

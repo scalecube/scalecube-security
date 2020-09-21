@@ -1,4 +1,4 @@
-package com.om2.exchange.tokens.jwt;
+package io.scalecube.security.tokens.jwt;
 
 import java.lang.reflect.Method;
 import java.time.Duration;

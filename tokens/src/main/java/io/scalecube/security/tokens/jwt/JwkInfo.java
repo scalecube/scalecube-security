@@ -1,9 +1,9 @@
-package io.scalecube.security.tokens.jwt.vault;
+package io.scalecube.security.tokens.jwt;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.StringJoiner;
 
-public class VaultJwk {
+public class JwkInfo {
 
   private String use;
   private String kty;
@@ -16,12 +16,26 @@ public class VaultJwk {
   @JsonProperty("e")
   private String exponent; // e
 
+  public JwkInfo() {}
+
   /**
-   * Serialization only constructor.
+   * Constructor.
    *
-   * @deprecated not to be used
+   * @param use use
+   * @param kty kty
+   * @param kid kid
+   * @param alg alg
+   * @param modulus modulus
+   * @param exponent exponent
    */
-  public VaultJwk() {}
+  public JwkInfo(String use, String kty, String kid, String alg, String modulus, String exponent) {
+    this.use = use;
+    this.kty = kty;
+    this.kid = kid;
+    this.alg = alg;
+    this.modulus = modulus;
+    this.exponent = exponent;
+  }
 
   public String use() {
     return use;
@@ -49,7 +63,7 @@ public class VaultJwk {
 
   @Override
   public String toString() {
-    return new StringJoiner(", ", VaultJwk.class.getSimpleName() + "[", "]")
+    return new StringJoiner(", ", JwkInfo.class.getSimpleName() + "[", "]")
         .add("use='" + use + "'")
         .add("kty='" + kty + "'")
         .add("kid='" + kid + "'")
