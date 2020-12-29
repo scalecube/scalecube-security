@@ -1,12 +1,8 @@
 package io.scalecube.security.tokens.jwt;
 
-import static io.scalecube.security.tokens.jwt.Utils.toRsaPublicKey;
-
-import java.security.Key;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Properties;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -20,7 +16,7 @@ class JwtTokenResolverTests {
 
   @Test
   void testTokenResolver() throws Exception {
-    TokenWithKey tokenWithKey = new TokenWithKey("token-and-pubkey.properties");
+    JwtTokenWithKey tokenWithKey = new JwtTokenWithKey("token-and-pubkey.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
     Mockito.when(tokenParser.parseToken())
@@ -51,9 +47,9 @@ class JwtTokenResolverTests {
 
   @Test
   void testTokenResolverWithRotatingKey() throws Exception {
-    TokenWithKey tokenWithKey = new TokenWithKey("token-and-pubkey.properties");
-    TokenWithKey tokenWithKeyAfterRotation =
-        new TokenWithKey("token-and-pubkey.after-rotation.properties");
+    JwtTokenWithKey tokenWithKey = new JwtTokenWithKey("token-and-pubkey.properties");
+    JwtTokenWithKey tokenWithKeyAfterRotation =
+        new JwtTokenWithKey("token-and-pubkey.after-rotation.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
     Mockito.when(tokenParser.parseToken())
@@ -98,7 +94,7 @@ class JwtTokenResolverTests {
 
   @Test
   void testTokenResolverWithWrongKey() throws Exception {
-    TokenWithKey tokenWithWrongKey = new TokenWithKey("token-and-wrong-pubkey.properties");
+    JwtTokenWithKey tokenWithWrongKey = new JwtTokenWithKey("token-and-wrong-pubkey.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
     Mockito.when(tokenParser.parseToken())
@@ -128,7 +124,7 @@ class JwtTokenResolverTests {
 
   @Test
   void testTokenResolverWhenKeyProviderFailing() throws Exception {
-    TokenWithKey tokenWithKey = new TokenWithKey("token-and-pubkey.properties");
+    JwtTokenWithKey tokenWithKey = new JwtTokenWithKey("token-and-pubkey.properties");
 
     JwtTokenParser tokenParser = Mockito.mock(JwtTokenParser.class);
     Mockito.when(tokenParser.parseToken())
@@ -152,21 +148,5 @@ class JwtTokenResolverTests {
 
     // failed resolution not stored => keyProvider must have been called 2 times
     Mockito.verify(keyProvider, Mockito.times(2)).findKey(tokenWithKey.kid);
-  }
-
-  static class TokenWithKey {
-
-    final String token;
-    final Key key;
-    final String kid;
-
-    TokenWithKey(String s) throws Exception {
-      ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-      Properties props = new Properties();
-      props.load(classLoader.getResourceAsStream(s));
-      this.token = props.getProperty("token");
-      this.kid = props.getProperty("kid");
-      this.key = toRsaPublicKey(props.getProperty("n"), props.getProperty("e"));
-    }
   }
 }

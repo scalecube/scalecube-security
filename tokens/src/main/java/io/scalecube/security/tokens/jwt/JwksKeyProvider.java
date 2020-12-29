@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -25,6 +26,9 @@ import reactor.core.scheduler.Schedulers;
 public final class JwksKeyProvider implements KeyProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JwksKeyProvider.class);
+
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+  private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -39,7 +43,7 @@ public final class JwksKeyProvider implements KeyProvider {
    * @param jwksUri jwksUri
    */
   public JwksKeyProvider(String jwksUri) {
-    this(jwksUri, newScheduler(), Duration.ofSeconds(10), Duration.ofSeconds(10));
+    this(jwksUri, newScheduler(), CONNECT_TIMEOUT, READ_TIMEOUT);
   }
 
   /**
@@ -60,38 +64,38 @@ public final class JwksKeyProvider implements KeyProvider {
 
   @Override
   public Mono<Key> findKey(String kid) {
-    return Mono.defer(this::callJwksUri)
-        .map(this::toKeyList)
-        .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
-        .switchIfEmpty(Mono.error(new KeyProviderException("Key was not found, kid: " + kid)))
+    return computeKey(kid)
+        .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
-        .subscribeOn(scheduler)
-        .publishOn(scheduler);
+        .subscribeOn(scheduler);
   }
 
-  private Mono<InputStream> callJwksUri() {
-    return Mono.fromCallable(
-        () -> {
-          HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
-          httpClient.setConnectTimeout((int) connectTimeoutMillis);
-          httpClient.setReadTimeout((int) readTimeoutMillis);
-
-          int responseCode = httpClient.getResponseCode();
-          if (responseCode != 200) {
-            LOGGER.error("[callJwksUri][{}] Not expected response code: {}", jwksUri, responseCode);
-            throw new KeyProviderException("Not expected response code: " + responseCode);
-          }
-
-          return httpClient.getInputStream();
-        });
+  private Mono<Key> computeKey(String kid) {
+    return Mono.fromCallable(this::computeKeyList)
+        .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
+        .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th));
   }
 
-  private JwkInfoList toKeyList(InputStream stream) {
+  private JwkInfoList computeKeyList() throws IOException {
+    HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
+    httpClient.setConnectTimeout((int) connectTimeoutMillis);
+    httpClient.setReadTimeout((int) readTimeoutMillis);
+
+    int responseCode = httpClient.getResponseCode();
+    if (responseCode != 200) {
+      LOGGER.error("[computeKey][{}] Not expected response code: {}", jwksUri, responseCode);
+      throw new KeyProviderException("Not expected response code: " + responseCode);
+    }
+
+    return toKeyList(httpClient.getInputStream());
+  }
+
+  private static JwkInfoList toKeyList(InputStream stream) {
     try (InputStream inputStream = new BufferedInputStream(stream)) {
       return OBJECT_MAPPER.readValue(inputStream, JwkInfoList.class);
     } catch (IOException e) {
       LOGGER.error("[toKeyList] Exception occurred: {}", e.toString());
-      throw new KeyProviderException(e);
+      throw Exceptions.propagate(e);
     }
   }
 

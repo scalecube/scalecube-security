@@ -15,7 +15,7 @@ import io.jsonwebtoken.JwtParserBuilder;
 import io.jsonwebtoken.Jwts;
 import java.time.Duration;
 import java.util.UUID;
-import org.junit.Assert;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,8 +69,8 @@ class VaultJwksKeyProviderTests {
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorSatisfies(
             throwable -> {
-              Assertions.assertEquals(throwable.getClass(), KeyProviderException.class);
-              Assert.assertThat(throwable.getMessage(), startsWith("Key was not found"));
+              Assertions.assertEquals(KeyNotFoundException.class, throwable.getClass());
+              MatcherAssert.assertThat(throwable.getMessage(), startsWith("Key was not found"));
             })
         .verify(TIMEOUT);
   }
@@ -83,8 +83,8 @@ class VaultJwksKeyProviderTests {
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorSatisfies(
             throwable -> {
-              Assertions.assertEquals(throwable.getClass(), KeyProviderException.class);
-              Assert.assertThat(throwable.getMessage(), startsWith("Key was not found"));
+              Assertions.assertEquals(KeyNotFoundException.class, throwable.getClass());
+              MatcherAssert.assertThat(throwable.getMessage(), startsWith("Key was not found"));
             })
         .verify(TIMEOUT);
   }

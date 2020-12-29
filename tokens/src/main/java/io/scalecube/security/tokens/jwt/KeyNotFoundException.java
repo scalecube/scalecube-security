@@ -1,13 +1,9 @@
 package io.scalecube.security.tokens.jwt;
 
-public final class KeyProviderException extends RuntimeException {
+public final class KeyNotFoundException extends RuntimeException {
 
-  public KeyProviderException(String s) {
+  public KeyNotFoundException(String s) {
     super(s);
-  }
-
-  public KeyProviderException(Throwable cause) {
-    super(cause);
   }
 
   @Override

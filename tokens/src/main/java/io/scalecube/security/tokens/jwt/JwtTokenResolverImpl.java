@@ -18,6 +18,8 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenResolver.class);
 
+  private static final Duration CLEANUP_INTERVAL = Duration.ofSeconds(60);
+
   private final KeyProvider keyProvider;
   private final JwtTokenParserFactory tokenParserFactory;
   private final Scheduler scheduler;
@@ -31,7 +33,7 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
    * @param keyProvider key provider
    */
   public JwtTokenResolverImpl(KeyProvider keyProvider) {
-    this(keyProvider, new JsonwebtokenParserFactory(), newScheduler(), Duration.ofSeconds(60));
+    this(keyProvider, new JsonwebtokenParserFactory(), newScheduler(), CLEANUP_INTERVAL);
   }
 
   /**
@@ -49,8 +51,8 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
       Duration cleanupInterval) {
     this.keyProvider = keyProvider;
     this.tokenParserFactory = tokenParserFactory;
-    this.cleanupInterval = cleanupInterval;
     this.scheduler = scheduler;
+    this.cleanupInterval = cleanupInterval;
   }
 
   @Override
