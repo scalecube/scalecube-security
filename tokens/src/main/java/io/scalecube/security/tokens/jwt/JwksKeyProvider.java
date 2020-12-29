@@ -71,12 +71,12 @@ public final class JwksKeyProvider implements KeyProvider {
   }
 
   private Mono<Key> computeKey(String kid) {
-    return Mono.fromCallable(this::computeKey0)
+    return Mono.fromCallable(this::computeKeyList)
         .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
         .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th));
   }
 
-  private JwkInfoList computeKey0() throws IOException {
+  private JwkInfoList computeKeyList() throws IOException {
     HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
     httpClient.setConnectTimeout((int) connectTimeoutMillis);
     httpClient.setReadTimeout((int) readTimeoutMillis);
