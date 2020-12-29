@@ -17,6 +17,7 @@ public interface JwtAuthenticator extends Authenticator {
 
   /**
    * Create a profile from claims.
+   *
    * @param tokenClaims the claims to parse
    * @return a profile from the claims
    */

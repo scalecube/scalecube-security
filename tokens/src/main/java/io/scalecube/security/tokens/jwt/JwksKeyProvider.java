@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -25,6 +26,9 @@ import reactor.core.scheduler.Schedulers;
 public final class JwksKeyProvider implements KeyProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JwksKeyProvider.class);
+
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+  private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -39,7 +43,7 @@ public final class JwksKeyProvider implements KeyProvider {
    * @param jwksUri jwksUri
    */
   public JwksKeyProvider(String jwksUri) {
-    this(jwksUri, newScheduler(), Duration.ofSeconds(10), Duration.ofSeconds(10));
+    this(jwksUri, newScheduler(), CONNECT_TIMEOUT, READ_TIMEOUT);
   }
 
   /**
@@ -63,10 +67,10 @@ public final class JwksKeyProvider implements KeyProvider {
     return Mono.defer(this::callJwksUri)
         .map(this::toKeyList)
         .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
-        .switchIfEmpty(Mono.error(new KeyProviderException("Key was not found, kid: " + kid)))
+        .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th))
+        .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
-        .subscribeOn(scheduler)
-        .publishOn(scheduler);
+        .subscribeOn(scheduler);
   }
 
   private Mono<InputStream> callJwksUri() {
@@ -91,7 +95,7 @@ public final class JwksKeyProvider implements KeyProvider {
       return OBJECT_MAPPER.readValue(inputStream, JwkInfoList.class);
     } catch (IOException e) {
       LOGGER.error("[toKeyList] Exception occurred: {}", e.toString());
-      throw new KeyProviderException(e);
+      throw Exceptions.propagate(e);
     }
   }
 

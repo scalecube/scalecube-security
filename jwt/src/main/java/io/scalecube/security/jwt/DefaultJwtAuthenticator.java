@@ -20,18 +20,18 @@ public final class DefaultJwtAuthenticator implements JwtAuthenticator {
   @Override
   public Mono<Profile> authenticate(String token) {
     return Mono.defer(
-        () -> {
-          String tokenWithoutSignature = token.substring(0, token.lastIndexOf(".") + 1);
+            () -> {
+              String tokenWithoutSignature = token.substring(0, token.lastIndexOf(".") + 1);
 
-          JwtParser parser = Jwts.parser();
+              JwtParser parser = Jwts.parser();
 
-          Jwt<Header, Claims> claims = parser.parseClaimsJwt(tokenWithoutSignature);
+              Jwt<Header, Claims> claims = parser.parseClaimsJwt(tokenWithoutSignature);
 
-          return jwtKeyResolver
-              .resolve((Map<String, Object>) claims.getHeader())
-              .map(key -> parser.setSigningKey(key).parseClaimsJws(token).getBody())
-              .map(this::profileFromClaims);
-        })
+              return jwtKeyResolver
+                  .resolve((Map<String, Object>) claims.getHeader())
+                  .map(key -> parser.setSigningKey(key).parseClaimsJws(token).getBody())
+                  .map(this::profileFromClaims);
+            })
         .onErrorMap(AuthenticationException::new);
   }
 }
