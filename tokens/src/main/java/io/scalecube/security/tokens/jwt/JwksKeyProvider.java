@@ -71,23 +71,23 @@ public final class JwksKeyProvider implements KeyProvider {
   }
 
   private Mono<Key> computeKey(String kid) {
-    return Mono.fromCallable(
-            () -> {
-              HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
-              httpClient.setConnectTimeout((int) connectTimeoutMillis);
-              httpClient.setReadTimeout((int) readTimeoutMillis);
-
-              int responseCode = httpClient.getResponseCode();
-              if (responseCode != 200) {
-                LOGGER.error(
-                    "[computeKey][{}] Not expected response code: {}", jwksUri, responseCode);
-                throw new KeyProviderException("Not expected response code: " + responseCode);
-              }
-
-              return toKeyList(httpClient.getInputStream());
-            })
+    return Mono.fromCallable(this::computeKey0)
         .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
         .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th));
+  }
+
+  private JwkInfoList computeKey0() throws IOException {
+    HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
+    httpClient.setConnectTimeout((int) connectTimeoutMillis);
+    httpClient.setReadTimeout((int) readTimeoutMillis);
+
+    int responseCode = httpClient.getResponseCode();
+    if (responseCode != 200) {
+      LOGGER.error("[computeKey][{}] Not expected response code: {}", jwksUri, responseCode);
+      throw new KeyProviderException("Not expected response code: " + responseCode);
+    }
+
+    return toKeyList(httpClient.getInputStream());
   }
 
   private static JwkInfoList toKeyList(InputStream stream) {
