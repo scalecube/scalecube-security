@@ -64,30 +64,30 @@ public final class JwksKeyProvider implements KeyProvider {
 
   @Override
   public Mono<Key> findKey(String kid) {
-    return Mono.defer(this::computeKeyList)
-        .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
-        .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th))
+    return computeKey(kid)
         .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
         .subscribeOn(scheduler);
   }
 
-  private Mono<JwkInfoList> computeKeyList() {
+  private Mono<Key> computeKey(String kid) {
     return Mono.fromCallable(
-        () -> {
-          HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
-          httpClient.setConnectTimeout((int) connectTimeoutMillis);
-          httpClient.setReadTimeout((int) readTimeoutMillis);
+            () -> {
+              HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
+              httpClient.setConnectTimeout((int) connectTimeoutMillis);
+              httpClient.setReadTimeout((int) readTimeoutMillis);
 
-          int responseCode = httpClient.getResponseCode();
-          if (responseCode != 200) {
-            LOGGER.error(
-                "[computeKeyList][{}] Not expected response code: {}", jwksUri, responseCode);
-            throw new KeyProviderException("Not expected response code: " + responseCode);
-          }
+              int responseCode = httpClient.getResponseCode();
+              if (responseCode != 200) {
+                LOGGER.error(
+                    "[computeKey][{}] Not expected response code: {}", jwksUri, responseCode);
+                throw new KeyProviderException("Not expected response code: " + responseCode);
+              }
 
-          return toKeyList(httpClient.getInputStream());
-        });
+              return toKeyList(httpClient.getInputStream());
+            })
+        .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
+        .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th));
   }
 
   private static JwkInfoList toKeyList(InputStream stream) {
