@@ -69,7 +69,7 @@ class VaultJwksKeyProviderTests {
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorSatisfies(
             throwable -> {
-              Assertions.assertEquals(throwable.getClass(), KeyProviderException.class);
+              Assertions.assertEquals(KeyNotFoundException.class, throwable.getClass());
               MatcherAssert.assertThat(throwable.getMessage(), startsWith("Key was not found"));
             })
         .verify(TIMEOUT);
@@ -83,7 +83,7 @@ class VaultJwksKeyProviderTests {
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorSatisfies(
             throwable -> {
-              Assertions.assertEquals(throwable.getClass(), KeyProviderException.class);
+              Assertions.assertEquals(KeyNotFoundException.class, throwable.getClass());
               MatcherAssert.assertThat(throwable.getMessage(), startsWith("Key was not found"));
             })
         .verify(TIMEOUT);
