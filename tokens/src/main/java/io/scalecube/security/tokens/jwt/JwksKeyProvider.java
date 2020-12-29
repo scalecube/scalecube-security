@@ -64,16 +64,15 @@ public final class JwksKeyProvider implements KeyProvider {
 
   @Override
   public Mono<Key> findKey(String kid) {
-    return Mono.defer(this::callJwksUri)
-        .map(this::toKeyList)
+    return Mono.defer(this::computeKeyList)
         .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
-        .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
         .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th))
+        .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
         .subscribeOn(scheduler);
   }
 
-  private Mono<InputStream> callJwksUri() {
+  private Mono<JwkInfoList> computeKeyList() {
     return Mono.fromCallable(
         () -> {
           HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
@@ -82,15 +81,16 @@ public final class JwksKeyProvider implements KeyProvider {
 
           int responseCode = httpClient.getResponseCode();
           if (responseCode != 200) {
-            LOGGER.error("[callJwksUri][{}] Not expected response code: {}", jwksUri, responseCode);
+            LOGGER.error(
+                "[computeKeyList][{}] Not expected response code: {}", jwksUri, responseCode);
             throw new KeyProviderException("Not expected response code: " + responseCode);
           }
 
-          return httpClient.getInputStream();
+          return toKeyList(httpClient.getInputStream());
         });
   }
 
-  private JwkInfoList toKeyList(InputStream stream) {
+  private static JwkInfoList toKeyList(InputStream stream) {
     try (InputStream inputStream = new BufferedInputStream(stream)) {
       return OBJECT_MAPPER.readValue(inputStream, JwkInfoList.class);
     } catch (IOException e) {
