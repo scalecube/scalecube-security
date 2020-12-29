@@ -67,8 +67,8 @@ public final class JwksKeyProvider implements KeyProvider {
     return Mono.defer(this::callJwksUri)
         .map(this::toKeyList)
         .flatMap(list -> Mono.justOrEmpty(findRsaKey(list, kid)))
-        .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th))
         .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
+        .onErrorMap(th -> th instanceof KeyProviderException ? th : new KeyProviderException(th))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
         .subscribeOn(scheduler);
   }
