@@ -102,7 +102,10 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
         (kid1) -> {
           Mono<Key> result =
               computedValueHolder.updateAndGet(
-                  mono -> Mono.defer(() -> keyProvider.findKey(kid)).cache());
+                  mono ->
+                      Mono.defer(() -> keyProvider.findKey(kid1))
+                          .cache()
+                          .doOnError(ex -> keyResolutions.remove(kid1)));
           scheduleCleanup(kid, computedValueHolder);
           return result;
         });
