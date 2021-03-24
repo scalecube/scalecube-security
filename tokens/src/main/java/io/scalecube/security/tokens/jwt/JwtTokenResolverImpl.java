@@ -1,5 +1,6 @@
 package io.scalecube.security.tokens.jwt;
 
+import io.scalecube.security.tokens.jwt.jsonwebtoken.JsonwebtokenParserFactory;
 import java.security.Key;
 import java.time.Duration;
 import java.util.Map;
@@ -18,7 +19,7 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenResolver.class);
 
   private KeyProvider keyProvider;
-  private JwtTokenParserFactory tokenParserFactory;
+  private JwtTokenParserFactory tokenParserFactory = new JsonwebtokenParserFactory();
   private Scheduler scheduler = Schedulers.boundedElastic();
   private Duration cleanupInterval = Duration.ofSeconds(60);
 
