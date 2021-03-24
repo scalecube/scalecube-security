@@ -47,7 +47,7 @@ class VaultJwksKeyProviderTests {
     String token = generateIdentityToken(clientToken, roleName); // oidc/token
     String kid = getKid(token);
 
-    JwksKeyProvider keyProvider = new JwksKeyProvider(jwksUri());
+    JwksKeyProvider keyProvider = new JwksKeyProvider().jwksUri(jwksUri());
 
     StepVerifier.create(keyProvider.findKey(kid))
         .expectNextCount(1)
@@ -64,7 +64,7 @@ class VaultJwksKeyProviderTests {
     String clientToken = createEntity(roleName); // onboard some entity with policy line above
     generateIdentityToken(clientToken, roleName); // oidc/token
 
-    JwksKeyProvider keyProvider = new JwksKeyProvider(jwksUri());
+    JwksKeyProvider keyProvider = new JwksKeyProvider().jwksUri(jwksUri());
 
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorSatisfies(
@@ -78,7 +78,7 @@ class VaultJwksKeyProviderTests {
   @Test
   @DisplayName("Fails to find key on empty environment")
   void testKeyNotFoundOnEmptyEnvironment() {
-    JwksKeyProvider keyProvider = new JwksKeyProvider(jwksUri());
+    JwksKeyProvider keyProvider = new JwksKeyProvider().jwksUri(jwksUri());
 
     StepVerifier.create(keyProvider.findKey(UUID.randomUUID().toString()))
         .expectErrorSatisfies(

@@ -1,7 +1,5 @@
 package io.scalecube.security.tokens.jwt;
 
-import static io.scalecube.security.tokens.jwt.Utils.toRsaPublicKey;
-
 import java.security.Key;
 import java.util.Properties;
 
@@ -17,6 +15,6 @@ class JwtTokenWithKey {
     props.load(classLoader.getResourceAsStream(s));
     this.token = props.getProperty("token");
     this.kid = props.getProperty("kid");
-    this.key = toRsaPublicKey(props.getProperty("n"), props.getProperty("e"));
+    this.key = JwksKeyProvider.toRsaPublicKey(props.getProperty("n"), props.getProperty("e"));
   }
 }

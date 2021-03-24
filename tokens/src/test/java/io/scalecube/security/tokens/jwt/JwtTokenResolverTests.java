@@ -32,8 +32,11 @@ class JwtTokenResolverTests {
     Mockito.when(keyProvider.findKey(tokenWithKey.kid)).thenReturn(Mono.just(tokenWithKey.key));
 
     JwtTokenResolverImpl tokenResolver =
-        new JwtTokenResolverImpl(
-            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
+        new JwtTokenResolverImpl()
+            .keyProvider(keyProvider)
+            .tokenParserFactory(tokenParserFactory)
+            .scheduler(VirtualTimeScheduler.create())
+            .cleanupInterval(Duration.ofSeconds(3));
 
     // N times call resolve
     StepVerifier.create(tokenResolver.resolve(tokenWithKey.token).repeat(3))
@@ -72,8 +75,11 @@ class JwtTokenResolverTests {
         .thenReturn(Mono.just(tokenWithKeyAfterRotation.key));
 
     JwtTokenResolverImpl tokenResolver =
-        new JwtTokenResolverImpl(
-            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
+        new JwtTokenResolverImpl()
+            .keyProvider(keyProvider)
+            .tokenParserFactory(tokenParserFactory)
+            .scheduler(VirtualTimeScheduler.create())
+            .cleanupInterval(Duration.ofSeconds(3));
 
     // Call normal token first
     StepVerifier.create(tokenResolver.resolve(tokenWithKey.token))
@@ -110,8 +116,11 @@ class JwtTokenResolverTests {
         .thenReturn(Mono.just(tokenWithWrongKey.key));
 
     JwtTokenResolverImpl tokenResolver =
-        new JwtTokenResolverImpl(
-            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
+        new JwtTokenResolverImpl()
+            .keyProvider(keyProvider)
+            .tokenParserFactory(tokenParserFactory)
+            .scheduler(VirtualTimeScheduler.create())
+            .cleanupInterval(Duration.ofSeconds(3));
 
     // Must fail (retry N times)
     StepVerifier.create(tokenResolver.resolve(tokenWithWrongKey.token).retry(1))
@@ -140,8 +149,11 @@ class JwtTokenResolverTests {
     Mockito.when(keyProvider.findKey(tokenWithKey.kid)).thenThrow(RuntimeException.class);
 
     JwtTokenResolverImpl tokenResolver =
-        new JwtTokenResolverImpl(
-            keyProvider, tokenParserFactory, VirtualTimeScheduler.create(), Duration.ofSeconds(3));
+        new JwtTokenResolverImpl()
+            .keyProvider(keyProvider)
+            .tokenParserFactory(tokenParserFactory)
+            .scheduler(VirtualTimeScheduler.create())
+            .cleanupInterval(Duration.ofSeconds(3));
 
     // Must fail with "hola" (retry N times)
     StepVerifier.create(tokenResolver.resolve(tokenWithKey.token).retry(1)).expectError().verify();

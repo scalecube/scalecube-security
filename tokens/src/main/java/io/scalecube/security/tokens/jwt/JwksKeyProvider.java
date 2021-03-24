@@ -1,7 +1,5 @@
 package io.scalecube.security.tokens.jwt;
 
-import static io.scalecube.security.tokens.jwt.Utils.toRsaPublicKey;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -11,55 +9,75 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.Key;
+import java.security.KeyFactory;
+import java.security.spec.KeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.time.Duration;
+import java.util.Base64;
+import java.util.Base64.Decoder;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 public final class JwksKeyProvider implements KeyProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JwksKeyProvider.class);
 
-  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
-  private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
-
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
-  private final Scheduler scheduler;
-  private final String jwksUri;
-  private final long connectTimeoutMillis;
-  private final long readTimeoutMillis;
+  private String jwksUri;
+  private Duration connectTimeout = Duration.ofSeconds(10);
+  private Duration readTimeout = Duration.ofSeconds(10);
 
-  /**
-   * Constructor.
-   *
-   * @param jwksUri jwksUri
-   */
-  public JwksKeyProvider(String jwksUri) {
-    this(jwksUri, newScheduler(), CONNECT_TIMEOUT, READ_TIMEOUT);
+  public JwksKeyProvider() {}
+
+  private JwksKeyProvider(JwksKeyProvider other) {
+    this.jwksUri = other.jwksUri;
+    this.connectTimeout = other.connectTimeout;
+    this.readTimeout = other.readTimeout;
   }
 
   /**
-   * Constructor.
+   * Setter for jwksUri.
    *
    * @param jwksUri jwksUri
-   * @param scheduler scheduler
-   * @param connectTimeout connectTimeout
-   * @param readTimeout readTimeout
+   * @return new instance with applied setting
    */
-  public JwksKeyProvider(
-      String jwksUri, Scheduler scheduler, Duration connectTimeout, Duration readTimeout) {
-    this.jwksUri = jwksUri;
-    this.scheduler = scheduler;
-    this.connectTimeoutMillis = connectTimeout.toMillis();
-    this.readTimeoutMillis = readTimeout.toMillis();
+  public JwksKeyProvider jwksUri(String jwksUri) {
+    final JwksKeyProvider c = copy();
+    c.jwksUri = jwksUri;
+    return c;
+  }
+
+  /**
+   * Setter for connectTimeout.
+   *
+   * @param connectTimeout connectTimeout
+   * @return new instance with applied setting
+   */
+  public JwksKeyProvider connectTimeout(Duration connectTimeout) {
+    final JwksKeyProvider c = copy();
+    c.connectTimeout = connectTimeout;
+    return c;
+  }
+
+  /**
+   * Setter for readTimeout.
+   *
+   * @param readTimeout readTimeout
+   * @return new instance with applied setting
+   */
+  public JwksKeyProvider readTimeout(Duration readTimeout) {
+    final JwksKeyProvider c = copy();
+    c.readTimeout = readTimeout;
+    return c;
   }
 
   @Override
@@ -67,7 +85,8 @@ public final class JwksKeyProvider implements KeyProvider {
     return computeKey(kid)
         .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
         .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
-        .subscribeOn(scheduler);
+        .subscribeOn(Schedulers.boundedElastic())
+        .publishOn(Schedulers.boundedElastic());
   }
 
   private Mono<Key> computeKey(String kid) {
@@ -78,8 +97,8 @@ public final class JwksKeyProvider implements KeyProvider {
 
   private JwkInfoList computeKeyList() throws IOException {
     HttpURLConnection httpClient = (HttpURLConnection) new URL(jwksUri).openConnection();
-    httpClient.setConnectTimeout((int) connectTimeoutMillis);
-    httpClient.setReadTimeout((int) readTimeoutMillis);
+    httpClient.setConnectTimeout((int) connectTimeout.toMillis());
+    httpClient.setReadTimeout((int) readTimeout.toMillis());
 
     int responseCode = httpClient.getResponseCode();
     if (responseCode != 200) {
@@ -106,6 +125,18 @@ public final class JwksKeyProvider implements KeyProvider {
         .map(info -> toRsaPublicKey(info.modulus(), info.exponent()));
   }
 
+  static Key toRsaPublicKey(String n, String e) {
+    Decoder b64Decoder = Base64.getUrlDecoder();
+    BigInteger modulus = new BigInteger(1, b64Decoder.decode(n));
+    BigInteger exponent = new BigInteger(1, b64Decoder.decode(e));
+    KeySpec keySpec = new RSAPublicKeySpec(modulus, exponent);
+    try {
+      return KeyFactory.getInstance("RSA").generatePublic(keySpec);
+    } catch (Exception ex) {
+      throw Exceptions.propagate(ex);
+    }
+  }
+
   private static ObjectMapper newObjectMapper() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -117,7 +148,7 @@ public final class JwksKeyProvider implements KeyProvider {
     return mapper;
   }
 
-  private static Scheduler newScheduler() {
-    return Schedulers.newElastic("jwks-key-provider", 60, true);
+  private JwksKeyProvider copy() {
+    return new JwksKeyProvider(this);
   }
 }
