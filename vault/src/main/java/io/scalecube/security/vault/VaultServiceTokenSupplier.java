@@ -1,18 +1,20 @@
 package io.scalecube.security.vault;
 
+import static io.scalecube.utils.MaskUtil.mask;
+
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import com.bettercloud.vault.rest.RestResponse;
-import io.scalecube.utils.MaskUtil;
 import java.util.Map;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public final class VaultServiceTokenSupplier {
 
@@ -22,7 +24,7 @@ public final class VaultServiceTokenSupplier {
 
   private String serviceRole;
   private String vaultAddress;
-  private Supplier<String> vaultTokenSupplier;
+  private Mono<String> vaultTokenSupplier;
   private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
 
   public VaultServiceTokenSupplier() {}
@@ -32,6 +34,18 @@ public final class VaultServiceTokenSupplier {
     this.vaultAddress = other.vaultAddress;
     this.vaultTokenSupplier = other.vaultTokenSupplier;
     this.serviceTokenNameBuilder = other.serviceTokenNameBuilder;
+  }
+
+  private VaultServiceTokenSupplier copy() {
+    return new VaultServiceTokenSupplier(this);
+  }
+
+  private void validate() {
+    Objects.requireNonNull(serviceRole, "VaultServiceTokenSupplier.serviceRole");
+    Objects.requireNonNull(vaultAddress, "VaultServiceTokenSupplier.vaultAddress");
+    Objects.requireNonNull(vaultTokenSupplier, "VaultServiceTokenSupplier.vaultTokenSupplier");
+    Objects.requireNonNull(
+        serviceTokenNameBuilder, "VaultServiceTokenSupplier.serviceTokenNameBuilder");
   }
 
   /**
@@ -64,7 +78,7 @@ public final class VaultServiceTokenSupplier {
    * @param vaultTokenSupplier vaultTokenSupplier
    * @return new instance with applied setting
    */
-  public VaultServiceTokenSupplier vaultTokenSupplier(Supplier<String> vaultTokenSupplier) {
+  public VaultServiceTokenSupplier vaultTokenSupplier(Mono<String> vaultTokenSupplier) {
     final VaultServiceTokenSupplier c = copy();
     c.vaultTokenSupplier = vaultTokenSupplier;
     return c;
@@ -85,59 +99,72 @@ public final class VaultServiceTokenSupplier {
   }
 
   /**
-   * Returns credentials as {@code Map<String, String>} for the given args.
+   * Obtains vault service token (aka identity token or oidc token).
    *
-   * @param tags tags attributes
+   * @param tags tags attributes; along with {@code serviceRole} will be applied on {@code
+   *     serviceTokenNameBuilder}
    * @return vault service token
    */
-  public Mono<String> getServiceToken(Map<String, String> tags) {
-    return Mono.fromCallable(vaultTokenSupplier::get)
-        .map(vaultToken -> rpcGetServiceToken(tags, vaultToken))
-        .doOnNext(response -> verifyOk(response.getStatus()))
-        .map(
-            response ->
-                Json.parse(new String(response.getBody()))
-                    .asObject()
-                    .get("data")
-                    .asObject()
-                    .get("token")
-                    .asString())
-        .doOnSuccess(
-            creds ->
-                LOGGER.info(
-                    "[rpcGetServiceToken] Successfully obtained vault service token: {}",
-                    MaskUtil.mask(creds)));
+  public Mono<String> getToken(Map<String, String> tags) {
+    return Mono.fromRunnable(this::validate)
+        .then(Mono.defer(() -> vaultTokenSupplier))
+        .flatMap(
+            vaultToken -> {
+              final String uri = buildServiceTokenUri(tags);
+              return Mono.fromCallable(() -> rpcGetToken(uri, vaultToken))
+                  .subscribeOn(Schedulers.boundedElastic())
+                  .doOnSubscribe(
+                      s ->
+                          LOGGER.debug(
+                              "[getToken] Getting vault service token, uri='{}', tags={}",
+                              uri,
+                              tags))
+                  .doOnSuccess(
+                      s ->
+                          LOGGER.debug(
+                              "[getToken][success] uri='{}', tags={}, result: {}",
+                              uri,
+                              tags,
+                              mask(s)))
+                  .doOnError(
+                      th ->
+                          LOGGER.error(
+                              "[getToken][error] uri='{}', tags={}, cause: {}",
+                              uri,
+                              tags,
+                              th.toString()));
+            });
   }
 
-  private RestResponse rpcGetServiceToken(Map<String, String> tags, String vaultToken) {
-    String uri = buildVaultServiceTokenUri(tags);
-    LOGGER.info("[rpcGetServiceToken] Getting vault service token (uri='{}')", uri);
+  private String rpcGetToken(String uri, String vaultToken) {
     try {
-      return new Rest().header(VAULT_TOKEN_HEADER, vaultToken).url(uri).get();
+      final RestResponse response =
+          new Rest().header(VAULT_TOKEN_HEADER, vaultToken).url(uri).get();
+
+      verifyOk(response.getStatus());
+
+      return Json.parse(new String(response.getBody()))
+          .asObject()
+          .get("data")
+          .asObject()
+          .get("token")
+          .asString();
     } catch (RestException e) {
-      LOGGER.error(
-          "[rpcGetServiceToken] Failed to get vault service token (uri='{}'), cause: {}",
-          uri,
-          e.toString());
       throw Exceptions.propagate(e);
     }
   }
 
   private static void verifyOk(int status) {
     if (status != 200) {
-      LOGGER.error("[rpcGetServiceToken] Not expected status ({}) returned", status);
+      LOGGER.error("[rpcGetToken] Not expected status ({}) returned", status);
       throw new IllegalStateException("Not expected status returned, status=" + status);
     }
   }
 
-  private String buildVaultServiceTokenUri(Map<String, String> tags) {
+  private String buildServiceTokenUri(Map<String, String> tags) {
     return new StringJoiner("/", vaultAddress, "")
         .add("v1/identity/oidc/token")
         .add(serviceTokenNameBuilder.apply(serviceRole, tags))
         .toString();
-  }
-
-  private VaultServiceTokenSupplier copy() {
-    return new VaultServiceTokenSupplier(this);
   }
 }

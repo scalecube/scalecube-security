@@ -47,6 +47,10 @@ public final class VaultServiceRolesInstaller {
     this.roleTtl = other.roleTtl;
   }
 
+  private VaultServiceRolesInstaller copy() {
+    return new VaultServiceRolesInstaller(this);
+  }
+
   /**
    * Setter for vaultAddress.
    *
@@ -156,8 +160,8 @@ public final class VaultServiceRolesInstaller {
   }
 
   /**
-   * Reads {@code serviceRolesFileName (access-file.yaml)} and builds micro-infrastructure for
-   * machine-to-machine authentication in the vault.
+   * Reads {@code inputFileName} and builds vault oidc micro-infrastructure (identity roles and
+   * keys) to use it for machine-to-machine authentication.
    */
   public void install() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
@@ -257,10 +261,6 @@ public final class VaultServiceRolesInstaller {
         .add("v1/identity/oidc/role")
         .add(roleName)
         .toString();
-  }
-
-  private VaultServiceRolesInstaller copy() {
-    return new VaultServiceRolesInstaller(this);
   }
 
   private static boolean isNullOrNoneOrEmpty(String value) {
