@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import reactor.core.Exceptions;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public final class VaultServiceRolesInstaller {
 
@@ -24,7 +26,7 @@ public final class VaultServiceRolesInstaller {
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
   private String vaultAddress;
-  private Supplier<String> vaultTokenSupplier;
+  private Mono<String> vaultTokenSupplier;
   private Supplier<String> keyNameSupplier;
   private Function<String, String> roleNameBuilder;
   private String inputFileName = "service-roles.yaml";
@@ -69,7 +71,7 @@ public final class VaultServiceRolesInstaller {
    * @param vaultTokenSupplier vaultTokenSupplier
    * @return new instance with applied setting
    */
-  public VaultServiceRolesInstaller vaultTokenSupplier(Supplier<String> vaultTokenSupplier) {
+  public VaultServiceRolesInstaller vaultTokenSupplier(Mono<String> vaultTokenSupplier) {
     final VaultServiceRolesInstaller c = copy();
     c.vaultTokenSupplier = vaultTokenSupplier;
     return c;
@@ -163,31 +165,47 @@ public final class VaultServiceRolesInstaller {
    * Reads {@code inputFileName} and builds vault oidc micro-infrastructure (identity roles and
    * keys) to use it for machine-to-machine authentication.
    */
-  public void install() {
+  public Mono<Void> install() {
+    return Mono.fromRunnable(this::install0)
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnSubscribe(s -> LOGGER.debug("[install] Installing vault service roles"))
+        .doOnSuccess(s -> LOGGER.debug("[install][success] Installed vault service roles"))
+        .doOnError(
+            th ->
+                LOGGER.error(
+                    "[install][error] Failed to install vault service roles, cause: {}",
+                    th.toString()))
+        .then();
+  }
+
+  private Mono<Void> install0() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
-      return;
+      return Mono.empty();
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
-    if (serviceRoles == null) {
-      return;
+    if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
+      return Mono.empty();
     }
 
-    final Rest rest = new Rest().header(VAULT_TOKEN_HEADER, vaultTokenSupplier.get());
+    return Mono.defer(() -> vaultTokenSupplier)
+        .doOnSuccess(
+            token -> {
+              final Rest rest = new Rest().header(VAULT_TOKEN_HEADER, token);
 
-    if (!serviceRoles.roles.isEmpty()) {
-      String keyName = keyNameSupplier.get();
-      createVaultIdentityKey(keyName, () -> rest.url(buildVaultIdentityKeyUri(keyName)));
+              String keyName = keyNameSupplier.get();
+              createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
 
-      for (Role role : serviceRoles.roles) {
-        String roleName = roleNameBuilder.apply(role.role);
-        createVaultIdentityRole(
-            keyName,
-            roleName,
-            role.permissions,
-            () -> rest.url(buildVaultIdentityRoleUri(roleName)));
-      }
-    }
+              for (Role role : serviceRoles.roles) {
+                String roleName = roleNameBuilder.apply(role.role);
+                createVaultIdentityRole(
+                    rest.url(buildVaultIdentityRoleUri(roleName)),
+                    keyName,
+                    roleName,
+                    role.permissions);
+              }
+            })
+        .then();
   }
 
   private ServiceRoles loadServiceRoles() {
@@ -205,7 +223,7 @@ public final class VaultServiceRolesInstaller {
     }
   }
 
-  private void createVaultIdentityKey(String keyName, Supplier<Rest> restSupplier) {
+  private void createVaultIdentityKey(Rest rest, String keyName) {
     LOGGER.debug("[createVaultIdentityKey] {}", keyName);
 
     byte[] body =
@@ -218,14 +236,14 @@ public final class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(restSupplier.get().body(body).post().getStatus(), "createVaultIdentityKey");
+      verifyOk(rest.body(body).post().getStatus(), "createVaultIdentityKey");
     } catch (RestException e) {
       throw Exceptions.propagate(e);
     }
   }
 
   private void createVaultIdentityRole(
-      String keyName, String roleName, List<String> permissions, Supplier<Rest> restSupplier) {
+      Rest rest, String keyName, String roleName, List<String> permissions) {
     LOGGER.debug("[createVaultIdentityRole] {}", roleName);
 
     byte[] body =
@@ -237,7 +255,7 @@ public final class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(restSupplier.get().body(body).post().getStatus(), "createVaultIdentityRole");
+      verifyOk(rest.body(body).post().getStatus(), "createVaultIdentityRole");
     } catch (RestException e) {
       throw Exceptions.propagate(e);
     }
