@@ -269,14 +269,14 @@ public final class VaultServiceRolesInstaller {
 
   private String buildVaultIdentityKeyUri(String keyName) {
     return new StringJoiner("/", vaultAddress, "")
-        .add("v1/identity/oidc/key")
+        .add("/v1/identity/oidc/key")
         .add(keyName)
         .toString();
   }
 
   private String buildVaultIdentityRoleUri(String roleName) {
     return new StringJoiner("/", vaultAddress, "")
-        .add("v1/identity/oidc/role")
+        .add("/v1/identity/oidc/role")
         .add(roleName)
         .toString();
   }

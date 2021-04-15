@@ -163,7 +163,7 @@ public final class VaultServiceTokenSupplier {
 
   private String buildServiceTokenUri(Map<String, String> tags) {
     return new StringJoiner("/", vaultAddress, "")
-        .add("v1/identity/oidc/token")
+        .add("/v1/identity/oidc/token")
         .add(serviceTokenNameBuilder.apply(serviceRole, tags))
         .toString();
   }
