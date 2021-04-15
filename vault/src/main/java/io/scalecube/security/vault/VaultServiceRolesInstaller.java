@@ -166,7 +166,7 @@ public final class VaultServiceRolesInstaller {
    * keys) to use it for machine-to-machine authentication.
    */
   public Mono<Void> install() {
-    return Mono.fromRunnable(this::install0)
+    return Mono.defer(this::install0)
         .subscribeOn(Schedulers.boundedElastic())
         .doOnSubscribe(s -> LOGGER.debug("[install] Installing vault service roles"))
         .doOnSuccess(s -> LOGGER.debug("[install][success] Installed vault service roles"))
