@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public final class VaultServiceTokenSupplier {
 
@@ -112,7 +111,6 @@ public final class VaultServiceTokenSupplier {
             vaultToken -> {
               final String uri = buildServiceTokenUri(tags);
               return Mono.fromCallable(() -> rpcGetToken(uri, vaultToken))
-                  .subscribeOn(Schedulers.boundedElastic())
                   .doOnSubscribe(
                       s ->
                           LOGGER.debug(
