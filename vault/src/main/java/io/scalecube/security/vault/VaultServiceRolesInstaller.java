@@ -7,6 +7,7 @@ import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -117,6 +118,19 @@ public final class VaultServiceRolesInstaller {
       List<Supplier<ServiceRoles>> serviceRolesSources) {
     final VaultServiceRolesInstaller c = copy();
     c.serviceRolesSources = serviceRolesSources;
+    return c;
+  }
+
+  /**
+   * Setter for serviceRolesSources.
+   *
+   * @param serviceRolesSources serviceRolesSources
+   * @return new instance with applied setting
+   */
+  public VaultServiceRolesInstaller serviceRolesSources(
+      Supplier<ServiceRoles>... serviceRolesSources) {
+    final VaultServiceRolesInstaller c = copy();
+    c.serviceRolesSources = Arrays.asList(serviceRolesSources);
     return c;
   }
 
