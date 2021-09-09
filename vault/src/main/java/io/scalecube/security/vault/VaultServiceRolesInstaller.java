@@ -28,14 +28,14 @@ public final class VaultServiceRolesInstaller {
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
-  private static final List<Supplier<ServiceRoles>> DEFAULT_SERVICE_ROLES =
+  private static final List<Supplier<ServiceRoles>> DEFAULT_SERVICE_ROLES_SOURCES =
       Collections.singletonList(new ResourcesServiceRolesSupplier());
 
   private String vaultAddress;
   private Mono<String> vaultTokenSupplier;
   private Supplier<String> keyNameSupplier;
   private Function<String, String> roleNameBuilder;
-  private List<Supplier<ServiceRoles>> serviceRoles = DEFAULT_SERVICE_ROLES;
+  private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
   private String keyAlgorithm = "RS256";
   private String keyRotationPeriod = "1h";
   private String keyVerificationTtl = "1h";
@@ -48,7 +48,7 @@ public final class VaultServiceRolesInstaller {
     this.vaultTokenSupplier = other.vaultTokenSupplier;
     this.keyNameSupplier = other.keyNameSupplier;
     this.roleNameBuilder = other.roleNameBuilder;
-    this.serviceRoles = other.serviceRoles;
+    this.serviceRolesSources = other.serviceRolesSources;
     this.keyAlgorithm = other.keyAlgorithm;
     this.keyRotationPeriod = other.keyRotationPeriod;
     this.keyVerificationTtl = other.keyVerificationTtl;
@@ -108,14 +108,15 @@ public final class VaultServiceRolesInstaller {
   }
 
   /**
-   * Setter for serviceRolesSuppliers.
+   * Setter for serviceRolesSources.
    *
-   * @param serviceRoles serviceRoles suppliers
+   * @param serviceRolesSources serviceRolesSources
    * @return new instance with applied setting
    */
-  public VaultServiceRolesInstaller serviceRoles(List<Supplier<ServiceRoles>> serviceRoles) {
+  public VaultServiceRolesInstaller serviceRolesSources(
+      List<Supplier<ServiceRoles>> serviceRolesSources) {
     final VaultServiceRolesInstaller c = copy();
-    c.serviceRoles = serviceRoles;
+    c.serviceRolesSources = serviceRolesSources;
     return c;
   }
 
@@ -215,19 +216,19 @@ public final class VaultServiceRolesInstaller {
   }
 
   private ServiceRoles loadServiceRoles() {
-    if (serviceRoles == null) {
+    if (serviceRolesSources == null) {
       return null;
     }
 
-    for (Supplier<ServiceRoles> serviceRolesSupplier : serviceRoles) {
+    for (Supplier<ServiceRoles> serviceRolesSource : serviceRolesSources) {
       try {
-        final ServiceRoles serviceRoles = serviceRolesSupplier.get();
+        final ServiceRoles serviceRoles = serviceRolesSource.get();
         if (serviceRoles != null) {
           return serviceRoles;
         }
       } catch (Throwable th) {
         LOGGER.warn(
-            "Fail to load ServiceRoles from {}, cause {}", serviceRolesSupplier, th.getMessage());
+            "Fail to load ServiceRoles from {}, cause {}", serviceRolesSource, th.getMessage());
       }
     }
 
