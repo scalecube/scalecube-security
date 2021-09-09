@@ -4,8 +4,12 @@ import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -25,11 +29,14 @@ public final class VaultServiceRolesInstaller {
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
+  private static final List<Supplier<ServiceRoles>> DEFAULT_SERVICE_ROLES_SOURCES =
+      Collections.singletonList(new ResourcesServiceRolesSupplier());
+
   private String vaultAddress;
   private Mono<String> vaultTokenSupplier;
   private Supplier<String> keyNameSupplier;
   private Function<String, String> roleNameBuilder;
-  private String inputFileName = "service-roles.yaml";
+  private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
   private String keyAlgorithm = "RS256";
   private String keyRotationPeriod = "1h";
   private String keyVerificationTtl = "1h";
@@ -42,7 +49,7 @@ public final class VaultServiceRolesInstaller {
     this.vaultTokenSupplier = other.vaultTokenSupplier;
     this.keyNameSupplier = other.keyNameSupplier;
     this.roleNameBuilder = other.roleNameBuilder;
-    this.inputFileName = other.inputFileName;
+    this.serviceRolesSources = other.serviceRolesSources;
     this.keyAlgorithm = other.keyAlgorithm;
     this.keyRotationPeriod = other.keyRotationPeriod;
     this.keyVerificationTtl = other.keyVerificationTtl;
@@ -102,14 +109,28 @@ public final class VaultServiceRolesInstaller {
   }
 
   /**
-   * Setter for inputFileName.
+   * Setter for serviceRolesSources.
    *
-   * @param inputFileName inputFileName
+   * @param serviceRolesSources serviceRolesSources
    * @return new instance with applied setting
    */
-  public VaultServiceRolesInstaller inputFileName(String inputFileName) {
+  public VaultServiceRolesInstaller serviceRolesSources(
+      List<Supplier<ServiceRoles>> serviceRolesSources) {
     final VaultServiceRolesInstaller c = copy();
-    c.inputFileName = inputFileName;
+    c.serviceRolesSources = serviceRolesSources;
+    return c;
+  }
+
+  /**
+   * Setter for serviceRolesSources.
+   *
+   * @param serviceRolesSources serviceRolesSources
+   * @return new instance with applied setting
+   */
+  public VaultServiceRolesInstaller serviceRolesSources(
+      Supplier<ServiceRoles>... serviceRolesSources) {
+    final VaultServiceRolesInstaller c = copy();
+    c.serviceRolesSources = Arrays.asList(serviceRolesSources);
     return c;
   }
 
@@ -209,11 +230,23 @@ public final class VaultServiceRolesInstaller {
   }
 
   private ServiceRoles loadServiceRoles() {
-    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-    InputStream inputStream = classLoader.getResourceAsStream(inputFileName);
-    return inputStream != null
-        ? new Yaml(new Constructor(ServiceRoles.class)).load(inputStream)
-        : null;
+    if (serviceRolesSources == null) {
+      return null;
+    }
+
+    for (Supplier<ServiceRoles> serviceRolesSource : serviceRolesSources) {
+      try {
+        final ServiceRoles serviceRoles = serviceRolesSource.get();
+        if (serviceRoles != null) {
+          return serviceRoles;
+        }
+      } catch (Throwable th) {
+        LOGGER.warn(
+            "Fail to load ServiceRoles from {}, cause {}", serviceRolesSource, th.getMessage());
+      }
+    }
+
+    return null;
   }
 
   private static void verifyOk(int status, String operation) {
@@ -320,6 +353,100 @@ public final class VaultServiceRolesInstaller {
       public void setPermissions(List<String> permissions) {
         this.permissions = permissions;
       }
+    }
+  }
+
+  public static class ResourcesServiceRolesSupplier implements Supplier<ServiceRoles> {
+
+    public static final String DEFAULT_FILE_NAME = "service-roles.yaml";
+
+    private final String fileName;
+
+    public ResourcesServiceRolesSupplier() {
+      this(DEFAULT_FILE_NAME);
+    }
+
+    public ResourcesServiceRolesSupplier(String fileName) {
+      this.fileName = Objects.requireNonNull(fileName, "fileName");
+    }
+
+    @Override
+    public ServiceRoles get() {
+      ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+      InputStream inputStream = classLoader.getResourceAsStream(fileName);
+      return inputStream != null
+          ? new Yaml(new Constructor(ServiceRoles.class)).load(inputStream)
+          : null;
+    }
+
+    @Override
+    public String toString() {
+      return new StringJoiner(", ", ResourcesServiceRolesSupplier.class.getSimpleName() + "[", "]")
+          .add("fileName='" + fileName + "'")
+          .toString();
+    }
+  }
+
+  public static class EnvironmentServiceRolesSupplier implements Supplier<ServiceRoles> {
+
+    public static final String DEFAULT_ENV_KEY = "SERVICE_ROLES";
+
+    private final String envKey;
+
+    public EnvironmentServiceRolesSupplier() {
+      this(DEFAULT_ENV_KEY);
+    }
+
+    public EnvironmentServiceRolesSupplier(String envKey) {
+      this.envKey = Objects.requireNonNull(envKey, "envKey");
+    }
+
+    @Override
+    public ServiceRoles get() {
+      final String value = System.getenv(envKey);
+      return value != null ? new Yaml(new Constructor(ServiceRoles.class)).load(value) : null;
+    }
+
+    @Override
+    public String toString() {
+      return new StringJoiner(
+              ", ", EnvironmentServiceRolesSupplier.class.getSimpleName() + "[", "]")
+          .add("envKey='" + envKey + "'")
+          .toString();
+    }
+  }
+
+  public static class FileServiceRolesSupplier implements Supplier<ServiceRoles> {
+
+    public static final String DEFAULT_FILE = "service_roles.yaml";
+
+    private final String file;
+
+    public FileServiceRolesSupplier() {
+      this(DEFAULT_FILE);
+    }
+
+    public FileServiceRolesSupplier(String file) {
+      this.file = Objects.requireNonNull(file, "file");
+    }
+
+    @Override
+    public ServiceRoles get() {
+      try {
+        final File file = new File(this.file);
+        return file.exists()
+            ? new Yaml(new Constructor(ServiceRoles.class)).load(new FileInputStream(file))
+            : null;
+      } catch (Exception e) {
+        throw Exceptions.propagate(e);
+      }
+    }
+
+    @Override
+    public String toString() {
+      return new StringJoiner(", ", FileServiceRolesSupplier.class.getSimpleName() + "[", "]")
+          .add("file='" + file + "'")
+          .toString();
     }
   }
 }
