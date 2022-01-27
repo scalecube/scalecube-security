@@ -123,6 +123,10 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
   }
 
   private Mono<Key> findKey(String kid, AtomicReference<Mono<Key>> computedValueHolder) {
+    if (cleanupInterval.isZero()) {
+      return Mono.defer(() -> keyProvider.findKey(kid)).cache();
+    }
+
     return keyResolutions.computeIfAbsent(
         kid,
         (kid1) -> {
