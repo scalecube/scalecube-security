@@ -93,10 +93,7 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
           String kid = (String) header.get("kid");
           Objects.requireNonNull(kid, "kid is missing");
 
-          Map<String, Object> body = jwtToken.body();
-          String aud = (String) body.get("aud"); // optional
-
-          LOGGER.debug("[resolveToken][aud:{}][kid:{}] Resolving token {}", aud, kid, mask(token));
+          LOGGER.debug("[resolveToken][kid:{}] Resolving token {}", kid, mask(token));
 
           // workaround to remove safely on errors
           AtomicReference<Mono<Key>> computedValueHolder = new AtomicReference<>();
@@ -107,18 +104,12 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
               .doOnError(
                   throwable ->
                       LOGGER.error(
-                          "[resolveToken][aud:{}][kid:{}][{}] Exception occurred: {}",
-                          aud,
+                          "[resolveToken][kid:{}][{}] Exception occurred: {}",
                           kid,
                           mask(token),
                           throwable.toString()))
               .doOnSuccess(
-                  s ->
-                      LOGGER.debug(
-                          "[resolveToken][aud:{}][kid:{}] Resolved token {}",
-                          aud,
-                          kid,
-                          mask(token)));
+                  s -> LOGGER.debug("[resolveToken][kid:{}] Resolved token {}", kid, mask(token)));
         });
   }
 
