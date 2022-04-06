@@ -83,6 +83,13 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
   }
 
   @Override
+  public Map<String, Object> parseBody(String token) {
+    JwtTokenParser tokenParser = tokenParserFactory.newParser(token);
+    JwtToken jwtToken = tokenParser.parseToken();
+    return jwtToken.body();
+  }
+
+  @Override
   public Mono<Map<String, Object>> resolve(String token) {
     return Mono.defer(
         () -> {
