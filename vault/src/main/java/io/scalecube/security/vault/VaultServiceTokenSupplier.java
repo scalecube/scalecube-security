@@ -111,12 +111,6 @@ public final class VaultServiceTokenSupplier {
             vaultToken -> {
               final String uri = buildServiceTokenUri(tags);
               return Mono.fromCallable(() -> rpcGetToken(uri, vaultToken))
-                  .doOnSubscribe(
-                      s ->
-                          LOGGER.debug(
-                              "[getToken] Getting vault service token, uri='{}', tags={}",
-                              uri,
-                              tags))
                   .doOnSuccess(
                       s ->
                           LOGGER.debug(
@@ -134,7 +128,7 @@ public final class VaultServiceTokenSupplier {
             });
   }
 
-  private String rpcGetToken(String uri, String vaultToken) {
+  private static String rpcGetToken(String uri, String vaultToken) {
     try {
       final RestResponse response =
           new Rest().header(VAULT_TOKEN_HEADER, vaultToken).url(uri).get();

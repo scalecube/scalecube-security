@@ -46,7 +46,6 @@
     <reactor.version>2020.0.23</reactor.version>
     <jackson.version>2.13.3</jackson.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <snakeyaml.version>1.26</snakeyaml.version>
 
     <mockito-junit-jupiter.version>4.6.1</mockito-junit-jupiter.version>
     <junit-jupiter.version>5.8.2</junit-jupiter.version>
@@ -85,12 +84,6 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
-      </dependency>
-      <!-- Yaml -->
-      <dependency>
-        <groupId>org.yaml</groupId>
-        <artifactId>snakeyaml</artifactId>
-        <version>${snakeyaml.version}</version>
       </dependency>
       <!-- Jsonwebtoken -->
       <dependency>
