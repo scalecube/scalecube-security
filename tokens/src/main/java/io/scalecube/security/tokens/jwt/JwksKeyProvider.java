@@ -84,7 +84,6 @@ public final class JwksKeyProvider implements KeyProvider {
   public Mono<Key> findKey(String kid) {
     return computeKey(kid)
         .switchIfEmpty(Mono.error(new KeyNotFoundException("Key was not found, kid: " + kid)))
-        .doOnSubscribe(s -> LOGGER.debug("[findKey] Looking up key in jwks, kid: {}", kid))
         .subscribeOn(Schedulers.boundedElastic())
         .publishOn(Schedulers.boundedElastic());
   }

@@ -3,10 +3,14 @@ package io.scalecube.security.vault;
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -17,8 +21,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -31,6 +33,8 @@ public final class VaultServiceRolesInstaller {
 
   private static final List<Supplier<ServiceRoles>> DEFAULT_SERVICE_ROLES_SOURCES =
       Collections.singletonList(new ResourcesServiceRolesSupplier());
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
   private String vaultAddress;
   private Mono<String> vaultTokenSupplier;
@@ -189,23 +193,18 @@ public final class VaultServiceRolesInstaller {
   public Mono<Void> install() {
     return Mono.defer(this::install0)
         .subscribeOn(Schedulers.boundedElastic())
-        .doOnSubscribe(s -> LOGGER.debug("[install] Installing vault service roles"))
-        .doOnSuccess(s -> LOGGER.debug("[install][success] Installed vault service roles"))
-        .doOnError(
-            th ->
-                LOGGER.error(
-                    "[install][error] Failed to install vault service roles, cause: {}",
-                    th.toString()))
-        .then();
+        .doOnError(th -> LOGGER.error("Failed to install serviceRoles, cause: {}", th.toString()));
   }
 
   private Mono<Void> install0() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
+      LOGGER.debug("Skipping serviceRoles installation, vaultAddress not set");
       return Mono.empty();
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
     if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
+      LOGGER.debug("Skipping serviceRoles installation, serviceRoles not set");
       return Mono.empty();
     }
 
@@ -214,7 +213,7 @@ public final class VaultServiceRolesInstaller {
             token -> {
               final Rest rest = new Rest().header(VAULT_TOKEN_HEADER, token);
 
-              String keyName = keyNameSupplier.get();
+              final String keyName = keyNameSupplier.get();
               createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
 
               for (Role role : serviceRoles.roles) {
@@ -226,6 +225,7 @@ public final class VaultServiceRolesInstaller {
                     role.permissions);
               }
             })
+        .doOnSuccess(s -> LOGGER.debug("Installed serviceRoles ({})", serviceRoles))
         .then();
   }
 
@@ -242,7 +242,7 @@ public final class VaultServiceRolesInstaller {
         }
       } catch (Throwable th) {
         LOGGER.warn(
-            "Fail to load ServiceRoles from {}, cause {}", serviceRolesSource, th.getMessage());
+            "Failed to load serviceRoles from {}, cause {}", serviceRolesSource, th.getMessage());
       }
     }
 
@@ -333,6 +333,13 @@ public final class VaultServiceRolesInstaller {
       this.roles = roles;
     }
 
+    @Override
+    public String toString() {
+      return new StringJoiner(", ", ServiceRoles.class.getSimpleName() + "[", "]")
+          .add("roles=" + roles)
+          .toString();
+    }
+
     public static class Role {
 
       private String role;
@@ -353,6 +360,14 @@ public final class VaultServiceRolesInstaller {
       public void setPermissions(List<String> permissions) {
         this.permissions = permissions;
       }
+
+      @Override
+      public String toString() {
+        return new StringJoiner(", ", Role.class.getSimpleName() + "[", "]")
+            .add("role='" + role + "'")
+            .add("permissions=" + permissions)
+            .toString();
+      }
     }
   }
 
@@ -372,11 +387,15 @@ public final class VaultServiceRolesInstaller {
 
     @Override
     public ServiceRoles get() {
-      ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-      InputStream inputStream = classLoader.getResourceAsStream(fileName);
-      return inputStream != null
-          ? new Yaml(new Constructor(ServiceRoles.class)).load(inputStream)
-          : null;
+      try {
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(fileName);
+        return inputStream != null
+            ? OBJECT_MAPPER.readValue(inputStream, ServiceRoles.class)
+            : null;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
@@ -403,8 +422,14 @@ public final class VaultServiceRolesInstaller {
 
     @Override
     public ServiceRoles get() {
-      final String value = System.getenv(envKey);
-      return value != null ? new Yaml(new Constructor(ServiceRoles.class)).load(value) : null;
+      try {
+        final String value = System.getenv(envKey);
+        return value != null
+            ? OBJECT_MAPPER.readValue(new StringReader(value), ServiceRoles.class)
+            : null;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
@@ -435,7 +460,7 @@ public final class VaultServiceRolesInstaller {
       try {
         final File file = new File(this.file);
         return file.exists()
-            ? new Yaml(new Constructor(ServiceRoles.class)).load(new FileInputStream(file))
+            ? OBJECT_MAPPER.readValue(new FileInputStream(file), ServiceRoles.class)
             : null;
       } catch (Exception e) {
         throw Exceptions.propagate(e);
