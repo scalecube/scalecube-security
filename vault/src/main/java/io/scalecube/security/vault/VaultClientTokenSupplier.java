@@ -12,6 +12,7 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public final class VaultClientTokenSupplier {
 
@@ -87,6 +88,7 @@ public final class VaultClientTokenSupplier {
   public Mono<String> getToken() {
     return Mono.fromRunnable(this::validate)
         .then(Mono.fromCallable(this::getToken0))
+        .subscribeOn(Schedulers.boundedElastic())
         .doOnSuccess(s -> LOGGER.debug("[getToken][success] result: {}", mask(s)))
         .doOnError(th -> LOGGER.error("[getToken][error] cause: {}", th.toString()));
   }
