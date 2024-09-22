@@ -8,11 +8,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public class VaultServiceTokenSupplier {
 
@@ -20,112 +18,38 @@ public class VaultServiceTokenSupplier {
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
-  private String serviceRole;
-  private String vaultAddress;
-  private Mono<String> vaultTokenSupplier;
-  private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
+  private final String vaultAddress;
+  private final String serviceRole;
+  private final Supplier<String> vaultTokenSupplier;
+  private final BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
 
-  public VaultServiceTokenSupplier() {}
-
-  private VaultServiceTokenSupplier(VaultServiceTokenSupplier other) {
-    this.serviceRole = other.serviceRole;
-    this.vaultAddress = other.vaultAddress;
-    this.vaultTokenSupplier = other.vaultTokenSupplier;
-    this.serviceTokenNameBuilder = other.serviceTokenNameBuilder;
-  }
-
-  private VaultServiceTokenSupplier copy() {
-    return new VaultServiceTokenSupplier(this);
-  }
-
-  private void validate() {
-    Objects.requireNonNull(serviceRole, "VaultServiceTokenSupplier.serviceRole");
-    Objects.requireNonNull(vaultAddress, "VaultServiceTokenSupplier.vaultAddress");
-    Objects.requireNonNull(vaultTokenSupplier, "VaultServiceTokenSupplier.vaultTokenSupplier");
-    Objects.requireNonNull(
-        serviceTokenNameBuilder, "VaultServiceTokenSupplier.serviceTokenNameBuilder");
-  }
-
-  /**
-   * Setter for serviceRole.
-   *
-   * @param serviceRole serviceRole
-   * @return new instance with applied setting
-   */
-  public VaultServiceTokenSupplier serviceRole(String serviceRole) {
-    final VaultServiceTokenSupplier c = copy();
-    c.serviceRole = serviceRole;
-    return c;
-  }
-
-  /**
-   * Setter for vaultAddress.
-   *
-   * @param vaultAddress vaultAddress
-   * @return new instance with applied setting
-   */
-  public VaultServiceTokenSupplier vaultAddress(String vaultAddress) {
-    final VaultServiceTokenSupplier c = copy();
-    c.vaultAddress = vaultAddress;
-    return c;
-  }
-
-  /**
-   * Setter for vaultTokenSupplier.
-   *
-   * @param vaultTokenSupplier vaultTokenSupplier
-   * @return new instance with applied setting
-   */
-  public VaultServiceTokenSupplier vaultTokenSupplier(Mono<String> vaultTokenSupplier) {
-    final VaultServiceTokenSupplier c = copy();
-    c.vaultTokenSupplier = vaultTokenSupplier;
-    return c;
-  }
-
-  /**
-   * Setter for serviceTokenNameBuilder.
-   *
-   * @param serviceTokenNameBuilder serviceTokenNameBuilder; inputs for this function are {@code
-   *     serviceRole} and {@code tags} attributes
-   * @return new instance with applied setting
-   */
-  public VaultServiceTokenSupplier serviceTokenNameBuilder(
-      BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder) {
-    final VaultServiceTokenSupplier c = copy();
-    c.serviceTokenNameBuilder = serviceTokenNameBuilder;
-    return c;
+  private VaultServiceTokenSupplier(Builder builder) {
+    this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
+    this.serviceRole = Objects.requireNonNull(builder.serviceRole, "serviceRole");
+    this.vaultTokenSupplier =
+        Objects.requireNonNull(builder.vaultTokenSupplier, "vaultTokenSupplier");
+    this.serviceTokenNameBuilder =
+        Objects.requireNonNull(builder.serviceTokenNameBuilder, "serviceTokenNameBuilder");
   }
 
   /**
    * Obtains vault service token (aka identity token or oidc token).
    *
-   * @param tags tags attributes; along with {@code serviceRole} will be applied on {@code
+   * @param tags tags attributes, along with {@code serviceRole} will be applied on {@code
    *     serviceTokenNameBuilder}
    * @return vault service token
    */
-  public Mono<String> getToken(Map<String, String> tags) {
-    return Mono.fromRunnable(this::validate)
-        .then(Mono.defer(() -> vaultTokenSupplier))
-        .subscribeOn(Schedulers.boundedElastic())
-        .flatMap(
-            vaultToken -> {
-              final String uri = buildServiceTokenUri(tags);
-              return Mono.fromCallable(() -> rpcGetToken(uri, vaultToken))
-                  .doOnSuccess(
-                      s ->
-                          LOGGER.debug(
-                              "[getToken][success] uri='{}', tags={}, result: {}",
-                              uri,
-                              tags,
-                              mask(s)))
-                  .doOnError(
-                      th ->
-                          LOGGER.error(
-                              "[getToken][error] uri='{}', tags={}, cause: {}",
-                              uri,
-                              tags,
-                              th.toString()));
-            });
+  public String getToken(Map<String, String> tags) {
+    try {
+      final String vaultToken = vaultTokenSupplier.get();
+      final String uri = toServiceTokenUri(tags);
+      final String token = rpcGetToken(uri, vaultToken);
+      LOGGER.debug("[getToken][success] uri={}, tags={}, result={}", uri, tags, mask(token));
+      return token;
+    } catch (Exception ex) {
+      LOGGER.error("[getToken][error] tags={}, cause: {}", tags, ex.toString());
+      throw new RuntimeException(ex);
+    }
   }
 
   private static String rpcGetToken(String uri, String vaultToken) {
@@ -142,7 +66,7 @@ public class VaultServiceTokenSupplier {
           .get("token")
           .asString();
     } catch (RestException e) {
-      throw Exceptions.propagate(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -153,7 +77,7 @@ public class VaultServiceTokenSupplier {
     }
   }
 
-  private String buildServiceTokenUri(Map<String, String> tags) {
+  private String toServiceTokenUri(Map<String, String> tags) {
     return new StringJoiner("/", vaultAddress, "")
         .add("/v1/identity/oidc/token")
         .add(serviceTokenNameBuilder.apply(serviceRole, tags))
@@ -165,5 +89,40 @@ public class VaultServiceTokenSupplier {
       return "*****";
     }
     return data.replace(data.substring(2, data.length() - 2), "***");
+  }
+
+  public static class Builder {
+
+    private String vaultAddress;
+    private String serviceRole;
+    private Supplier<String> vaultTokenSupplier;
+    private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
+
+    private Builder() {}
+
+    public Builder vaultAddress(String vaultAddress) {
+      this.vaultAddress = vaultAddress;
+      return this;
+    }
+
+    public Builder serviceRole(String serviceRole) {
+      this.serviceRole = serviceRole;
+      return this;
+    }
+
+    public Builder vaultTokenSupplier(Supplier<String> vaultTokenSupplier) {
+      this.vaultTokenSupplier = vaultTokenSupplier;
+      return this;
+    }
+
+    public Builder serviceTokenNameBuilder(
+        BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder) {
+      this.serviceTokenNameBuilder = serviceTokenNameBuilder;
+      return this;
+    }
+
+    public VaultServiceTokenSupplier builder() {
+      return new VaultServiceTokenSupplier(this);
+    }
   }
 }

@@ -21,9 +21,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public class VaultServiceRolesInstaller {
 
@@ -36,197 +33,61 @@ public class VaultServiceRolesInstaller {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
-  private String vaultAddress;
-  private Mono<String> vaultTokenSupplier;
-  private Supplier<String> keyNameSupplier;
-  private Function<String, String> roleNameBuilder;
-  private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
-  private String keyAlgorithm = "RS256";
-  private String keyRotationPeriod = "1h";
-  private String keyVerificationTtl = "1h";
-  private String roleTtl = "1m";
+  private final String vaultAddress;
+  private final Supplier<String> vaultTokenSupplier;
+  private final Supplier<String> keyNameSupplier;
+  private final Function<String, String> roleNameBuilder;
+  private final List<Supplier<ServiceRoles>> serviceRolesSources;
+  private final String keyAlgorithm;
+  private final String keyRotationPeriod;
+  private final String keyVerificationTtl;
+  private final String roleTtl;
 
-  public VaultServiceRolesInstaller() {}
-
-  private VaultServiceRolesInstaller(VaultServiceRolesInstaller other) {
-    this.vaultAddress = other.vaultAddress;
-    this.vaultTokenSupplier = other.vaultTokenSupplier;
-    this.keyNameSupplier = other.keyNameSupplier;
-    this.roleNameBuilder = other.roleNameBuilder;
-    this.serviceRolesSources = other.serviceRolesSources;
-    this.keyAlgorithm = other.keyAlgorithm;
-    this.keyRotationPeriod = other.keyRotationPeriod;
-    this.keyVerificationTtl = other.keyVerificationTtl;
-    this.roleTtl = other.roleTtl;
+  private VaultServiceRolesInstaller(Builder builder) {
+    this.vaultAddress = builder.vaultAddress;
+    this.vaultTokenSupplier = builder.vaultTokenSupplier;
+    this.keyNameSupplier = builder.keyNameSupplier;
+    this.roleNameBuilder = builder.roleNameBuilder;
+    this.serviceRolesSources = builder.serviceRolesSources;
+    this.keyAlgorithm = builder.keyAlgorithm;
+    this.keyRotationPeriod = builder.keyRotationPeriod;
+    this.keyVerificationTtl = builder.keyVerificationTtl;
+    this.roleTtl = builder.roleTtl;
   }
 
-  private VaultServiceRolesInstaller copy() {
-    return new VaultServiceRolesInstaller(this);
-  }
-
-  /**
-   * Setter for vaultAddress.
-   *
-   * @param vaultAddress vaultAddress
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller vaultAddress(String vaultAddress) {
-    final VaultServiceRolesInstaller c = copy();
-    c.vaultAddress = vaultAddress;
-    return c;
+  public static Builder builder() {
+    return new Builder();
   }
 
   /**
-   * Setter for vaultTokenSupplier.
-   *
-   * @param vaultTokenSupplier vaultTokenSupplier
-   * @return new instance with applied setting
+   * Builds vault oidc micro-infrastructure (identity roles and keys) to use it for
+   * machine-to-machine authentication.
    */
-  public VaultServiceRolesInstaller vaultTokenSupplier(Mono<String> vaultTokenSupplier) {
-    final VaultServiceRolesInstaller c = copy();
-    c.vaultTokenSupplier = vaultTokenSupplier;
-    return c;
-  }
-
-  /**
-   * Setter for keyNameSupplier.
-   *
-   * @param keyNameSupplier keyNameSupplier
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller keyNameSupplier(Supplier<String> keyNameSupplier) {
-    final VaultServiceRolesInstaller c = copy();
-    c.keyNameSupplier = keyNameSupplier;
-    return c;
-  }
-
-  /**
-   * Setter for roleNameBuilder.
-   *
-   * @param roleNameBuilder roleNameBuilder
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller roleNameBuilder(Function<String, String> roleNameBuilder) {
-    final VaultServiceRolesInstaller c = copy();
-    c.roleNameBuilder = roleNameBuilder;
-    return c;
-  }
-
-  /**
-   * Setter for serviceRolesSources.
-   *
-   * @param serviceRolesSources serviceRolesSources
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller serviceRolesSources(
-      List<Supplier<ServiceRoles>> serviceRolesSources) {
-    final VaultServiceRolesInstaller c = copy();
-    c.serviceRolesSources = serviceRolesSources;
-    return c;
-  }
-
-  /**
-   * Setter for serviceRolesSources.
-   *
-   * @param serviceRolesSources serviceRolesSources
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller serviceRolesSources(
-      Supplier<ServiceRoles>... serviceRolesSources) {
-    final VaultServiceRolesInstaller c = copy();
-    c.serviceRolesSources = Arrays.asList(serviceRolesSources);
-    return c;
-  }
-
-  /**
-   * Setter for keyAlgorithm.
-   *
-   * @param keyAlgorithm keyAlgorithm
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller keyAlgorithm(String keyAlgorithm) {
-    final VaultServiceRolesInstaller c = copy();
-    c.keyAlgorithm = keyAlgorithm;
-    return c;
-  }
-
-  /**
-   * Setter for keyRotationPeriod.
-   *
-   * @param keyRotationPeriod keyRotationPeriod
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller keyRotationPeriod(String keyRotationPeriod) {
-    final VaultServiceRolesInstaller c = copy();
-    c.keyRotationPeriod = keyRotationPeriod;
-    return c;
-  }
-
-  /**
-   * Setter for keyVerificationTtl.
-   *
-   * @param keyVerificationTtl keyVerificationTtl
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller keyVerificationTtl(String keyVerificationTtl) {
-    final VaultServiceRolesInstaller c = copy();
-    c.keyVerificationTtl = keyVerificationTtl;
-    return c;
-  }
-
-  /**
-   * Setter for roleTtl.
-   *
-   * @param roleTtl roleTtl
-   * @return new instance with applied setting
-   */
-  public VaultServiceRolesInstaller roleTtl(String roleTtl) {
-    final VaultServiceRolesInstaller c = copy();
-    c.roleTtl = roleTtl;
-    return c;
-  }
-
-  /**
-   * Reads {@code inputFileName} and builds vault oidc micro-infrastructure (identity roles and
-   * keys) to use it for machine-to-machine authentication.
-   */
-  public Mono<Void> install() {
-    return Mono.defer(this::install0)
-        .subscribeOn(Schedulers.boundedElastic())
-        .doOnError(th -> LOGGER.error("Failed to install serviceRoles, cause: {}", th.toString()));
-  }
-
-  private Mono<Void> install0() {
+  public void install() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
       LOGGER.debug("Skipping serviceRoles installation, vaultAddress not set");
-      return Mono.empty();
+      return;
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
     if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
       LOGGER.debug("Skipping serviceRoles installation, serviceRoles not set");
-      return Mono.empty();
+      return;
     }
 
-    return Mono.defer(() -> vaultTokenSupplier)
-        .doOnSuccess(
-            token -> {
-              final Rest rest = new Rest().header(VAULT_TOKEN_HEADER, token);
+    final String token = vaultTokenSupplier.get();
+    final Rest rest = new Rest().header(VAULT_TOKEN_HEADER, token);
 
-              final String keyName = keyNameSupplier.get();
-              createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
+    final String keyName = keyNameSupplier.get();
+    createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
 
-              for (Role role : serviceRoles.roles) {
-                String roleName = roleNameBuilder.apply(role.role);
-                createVaultIdentityRole(
-                    rest.url(buildVaultIdentityRoleUri(roleName)),
-                    keyName,
-                    roleName,
-                    role.permissions);
-              }
-            })
-        .doOnSuccess(s -> LOGGER.debug("Installed serviceRoles ({})", serviceRoles))
-        .then();
+    for (Role role : serviceRoles.roles) {
+      String roleName = roleNameBuilder.apply(role.role);
+      createVaultIdentityRole(
+          rest.url(buildVaultIdentityRoleUri(roleName)), keyName, roleName, role.permissions);
+    }
+
+    LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
   }
 
   private ServiceRoles loadServiceRoles() {
@@ -235,14 +96,9 @@ public class VaultServiceRolesInstaller {
     }
 
     for (Supplier<ServiceRoles> serviceRolesSource : serviceRolesSources) {
-      try {
-        final ServiceRoles serviceRoles = serviceRolesSource.get();
-        if (serviceRoles != null) {
-          return serviceRoles;
-        }
-      } catch (Throwable th) {
-        LOGGER.warn(
-            "Failed to load serviceRoles from {}, cause {}", serviceRolesSource, th.getMessage());
+      final ServiceRoles serviceRoles = serviceRolesSource.get();
+      if (serviceRoles != null) {
+        return serviceRoles;
       }
     }
 
@@ -271,7 +127,7 @@ public class VaultServiceRolesInstaller {
     try {
       verifyOk(rest.body(body).post().getStatus(), "createVaultIdentityKey");
     } catch (RestException e) {
-      throw Exceptions.propagate(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -290,7 +146,7 @@ public class VaultServiceRolesInstaller {
     try {
       verifyOk(rest.body(body).post().getStatus(), "createVaultIdentityRole");
     } catch (RestException e) {
-      throw Exceptions.propagate(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -475,6 +331,75 @@ public class VaultServiceRolesInstaller {
       return new StringJoiner(", ", FileServiceRolesSupplier.class.getSimpleName() + "[", "]")
           .add("file='" + file + "'")
           .toString();
+    }
+  }
+
+  public static class Builder {
+
+    private String vaultAddress;
+    private Supplier<String> vaultTokenSupplier;
+    private Supplier<String> keyNameSupplier;
+    private Function<String, String> roleNameBuilder;
+    private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
+    private String keyAlgorithm = "RS256";
+    private String keyRotationPeriod = "1h";
+    private String keyVerificationTtl = "1h";
+    private String roleTtl = "1m";
+
+    private Builder() {}
+
+    public Builder vaultAddress(String vaultAddress) {
+      this.vaultAddress = vaultAddress;
+      return this;
+    }
+
+    public Builder vaultTokenSupplier(Supplier<String> vaultTokenSupplier) {
+      this.vaultTokenSupplier = vaultTokenSupplier;
+      return this;
+    }
+
+    public Builder keyNameSupplier(Supplier<String> keyNameSupplier) {
+      this.keyNameSupplier = keyNameSupplier;
+      return this;
+    }
+
+    public Builder roleNameBuilder(Function<String, String> roleNameBuilder) {
+      this.roleNameBuilder = roleNameBuilder;
+      return this;
+    }
+
+    public Builder serviceRolesSources(List<Supplier<ServiceRoles>> serviceRolesSources) {
+      this.serviceRolesSources = serviceRolesSources;
+      return this;
+    }
+
+    public Builder serviceRolesSources(Supplier<ServiceRoles>... serviceRolesSources) {
+      this.serviceRolesSources = Arrays.asList(serviceRolesSources);
+      return this;
+    }
+
+    public Builder keyAlgorithm(String keyAlgorithm) {
+      this.keyAlgorithm = keyAlgorithm;
+      return this;
+    }
+
+    public Builder keyRotationPeriod(String keyRotationPeriod) {
+      this.keyRotationPeriod = keyRotationPeriod;
+      return this;
+    }
+
+    public Builder keyVerificationTtl(String keyVerificationTtl) {
+      this.keyVerificationTtl = keyVerificationTtl;
+      return this;
+    }
+
+    public Builder roleTtl(String roleTtl) {
+      this.roleTtl = roleTtl;
+      return this;
+    }
+
+    public VaultServiceRolesInstaller build() {
+      return new VaultServiceRolesInstaller(this);
     }
   }
 }
