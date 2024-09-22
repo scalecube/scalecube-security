@@ -299,7 +299,7 @@ public class VaultServiceRolesInstaller {
 
   public static class FileServiceRolesSupplier implements Supplier<ServiceRoles> {
 
-    public static final String DEFAULT_FILE = "service_roles.yaml";
+    public static final String DEFAULT_FILE = "service-roles.yaml";
 
     private final String file;
 
