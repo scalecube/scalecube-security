@@ -1,83 +1,62 @@
 package io.scalecube.security.vault;
 
-import static io.scalecube.utils.MaskUtil.mask;
-
 import com.bettercloud.vault.VaultConfig;
 import com.bettercloud.vault.VaultException;
-import io.scalecube.config.utils.ThrowableUtil;
-import io.scalecube.config.vault.EnvironmentVaultTokenSupplier;
-import io.scalecube.config.vault.KubernetesVaultTokenSupplier;
-import io.scalecube.config.vault.VaultTokenSupplier;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public final class VaultClientTokenSupplier {
+public class VaultClientTokenSupplier {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VaultClientTokenSupplier.class);
 
-  private String vaultAddress;
-  private String vaultToken;
-  private String vaultRole;
+  private final String vaultAddress;
+  private final String vaultToken;
+  private final String vaultRole;
 
-  public VaultClientTokenSupplier() {}
-
-  private VaultClientTokenSupplier(VaultClientTokenSupplier other) {
-    this.vaultAddress = other.vaultAddress;
-    this.vaultToken = other.vaultToken;
-    this.vaultRole = other.vaultRole;
-  }
-
-  private VaultClientTokenSupplier copy() {
-    return new VaultClientTokenSupplier(this);
-  }
-
-  private void validate() {
+  /**
+   * Constructor.
+   *
+   * @param vaultAddress vaultAddress
+   * @param vaultToken vaultToken (must not set be together with vaultRole)
+   * @param vaultRole vaultRole (must not set be together with vaultToken)
+   */
+  public VaultClientTokenSupplier(String vaultAddress, String vaultToken, String vaultRole) {
+    this.vaultAddress = vaultAddress;
+    this.vaultToken = vaultToken;
+    this.vaultRole = vaultRole;
     if (isNullOrNoneOrEmpty(vaultAddress)) {
       throw new IllegalArgumentException("Vault address is required");
     }
     if (isNullOrNoneOrEmpty(vaultToken) && isNullOrNoneOrEmpty(vaultRole)) {
       throw new IllegalArgumentException(
-          "Vault auth scheme is required (specify either VAULT_ROLE or VAULT_TOKEN)");
+          "Vault auth scheme is required (specify either vaultToken or vaultRole)");
     }
   }
 
   /**
-   * Setter for vaultAddress.
+   * Returns new instance of {@link VaultClientTokenSupplier}.
    *
    * @param vaultAddress vaultAddress
-   * @return new instance with applied setting
-   */
-  public VaultClientTokenSupplier vaultAddress(String vaultAddress) {
-    final VaultClientTokenSupplier c = copy();
-    c.vaultAddress = vaultAddress;
-    return c;
-  }
-
-  /**
-   * Setter for vaultToken.
-   *
    * @param vaultToken vaultToken
-   * @return new instance with applied setting
+   * @return new instance of {@link VaultClientTokenSupplier}
    */
-  public VaultClientTokenSupplier vaultToken(String vaultToken) {
-    final VaultClientTokenSupplier c = copy();
-    c.vaultToken = vaultToken;
-    return c;
+  public static VaultClientTokenSupplier supplierByToken(String vaultAddress, String vaultToken) {
+    return new VaultClientTokenSupplier(vaultAddress, vaultToken, null);
   }
 
   /**
-   * Setter for vaultRole.
+   * Returns new instance of {@link VaultClientTokenSupplier}.
    *
+   * @param vaultAddress vaultAddress
    * @param vaultRole vaultRole
-   * @return new instance with applied setting
+   * @return new instance of {@link VaultClientTokenSupplier}
    */
-  public VaultClientTokenSupplier vaultRole(String vaultRole) {
-    final VaultClientTokenSupplier c = copy();
-    c.vaultRole = vaultRole;
-    return c;
+  public static VaultClientTokenSupplier supplierByRole(String vaultAddress, String vaultRole) {
+    return new VaultClientTokenSupplier(vaultAddress, null, vaultRole);
   }
 
   /**
@@ -86,8 +65,7 @@ public final class VaultClientTokenSupplier {
    * @return vault client token
    */
   public Mono<String> getToken() {
-    return Mono.fromRunnable(this::validate)
-        .then(Mono.fromCallable(this::getToken0))
+    return Mono.fromCallable(this::getToken0)
         .subscribeOn(Schedulers.boundedElastic())
         .doOnSuccess(s -> LOGGER.debug("[getToken][success] result: {}", mask(s)))
         .doOnError(th -> LOGGER.error("[getToken][error] cause: {}", th.toString()));
@@ -103,7 +81,7 @@ public final class VaultClientTokenSupplier {
           LOGGER.warn(
               "Taking KubernetesVaultTokenSupplier by precedence rule, "
                   + "ignoring EnvironmentVaultTokenSupplier "
-                  + "(specify either VAULT_ROLE or VAULT_TOKEN, not both)");
+                  + "(specify either vaultToken or vaultRole, not both)");
         }
         vaultTokenSupplier = new KubernetesVaultTokenSupplier().vaultRole(vaultRole);
         vaultConfig = new VaultConfig().address(vaultAddress).build();
@@ -114,7 +92,7 @@ public final class VaultClientTokenSupplier {
 
       return vaultTokenSupplier.getToken(vaultConfig);
     } catch (VaultException e) {
-      throw ThrowableUtil.propagate(e);
+      throw Exceptions.propagate(e);
     }
   }
 
@@ -123,5 +101,12 @@ public final class VaultClientTokenSupplier {
         || "none".equalsIgnoreCase(value)
         || "null".equals(value)
         || value.isEmpty();
+  }
+
+  private static String mask(String data) {
+    if (data == null || data.length() < 5) {
+      return "*****";
+    }
+    return data.replace(data.substring(2, data.length() - 2), "***");
   }
 }

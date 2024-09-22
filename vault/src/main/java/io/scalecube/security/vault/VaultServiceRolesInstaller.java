@@ -25,7 +25,7 @@ import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public final class VaultServiceRolesInstaller {
+public class VaultServiceRolesInstaller {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceRolesInstaller.class);
 

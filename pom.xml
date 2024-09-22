@@ -39,10 +39,8 @@
   </modules>
 
   <properties>
-    <scalecube-config.version>0.4.20</scalecube-config.version>
-    <scalecube-commons.version>1.0.24</scalecube-commons.version>
-
     <reactor.version>2020.0.32</reactor.version>
+    <vault-java-driver.version>5.1.0</vault-java-driver.version>
     <jackson.version>2.15.1</jackson.version>
     <slf4j.version>2.0.7</slf4j.version>
     <jjwt.version>0.11.2</jjwt.version>
@@ -59,17 +57,11 @@
 
   <dependencyManagement>
     <dependencies>
-      <!-- Scalecube Config -->
+      <!-- Vault -->
       <dependency>
-        <groupId>io.scalecube</groupId>
-        <artifactId>scalecube-config-vault</artifactId>
-        <version>${scalecube-config.version}</version>
-      </dependency>
-      <!-- Scalecube Commons -->
-      <dependency>
-        <groupId>io.scalecube</groupId>
-        <artifactId>scalecube-commons</artifactId>
-        <version>${scalecube-commons.version}</version>
+        <groupId>com.bettercloud</groupId>
+        <artifactId>vault-java-driver</artifactId>
+        <version>${vault-java-driver.version}</version>
       </dependency>
       <!-- Reactor -->
       <dependency>

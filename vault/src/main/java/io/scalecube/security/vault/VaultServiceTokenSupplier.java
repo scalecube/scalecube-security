@@ -1,7 +1,5 @@
 package io.scalecube.security.vault;
 
-import static io.scalecube.utils.MaskUtil.mask;
-
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
@@ -16,7 +14,7 @@ import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public final class VaultServiceTokenSupplier {
+public class VaultServiceTokenSupplier {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceTokenSupplier.class);
 
@@ -160,5 +158,12 @@ public final class VaultServiceTokenSupplier {
         .add("/v1/identity/oidc/token")
         .add(serviceTokenNameBuilder.apply(serviceRole, tags))
         .toString();
+  }
+
+  private static String mask(String data) {
+    if (data == null || data.length() < 5) {
+      return "*****";
+    }
+    return data.replace(data.substring(2, data.length() - 2), "***");
   }
 }
