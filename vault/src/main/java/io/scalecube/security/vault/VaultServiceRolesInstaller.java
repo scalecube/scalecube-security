@@ -3,6 +3,8 @@ package io.scalecube.security.vault;
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
@@ -31,7 +33,8 @@ public class VaultServiceRolesInstaller {
   private static final List<Supplier<ServiceRoles>> DEFAULT_SERVICE_ROLES_SOURCES =
       Collections.singletonList(new ResourcesServiceRolesSupplier());
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
+  private static final ObjectMapper OBJECT_MAPPER =
+      new ObjectMapper(new YAMLFactory()).setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
   private final String vaultAddress;
   private final Supplier<String> vaultTokenSupplier;
@@ -181,12 +184,13 @@ public class VaultServiceRolesInstaller {
 
     private List<Role> roles;
 
-    public List<Role> getRoles() {
+    public List<Role> roles() {
       return roles;
     }
 
-    public void setRoles(List<Role> roles) {
+    public ServiceRoles roles(List<Role> roles) {
       this.roles = roles;
+      return this;
     }
 
     @Override
@@ -201,20 +205,22 @@ public class VaultServiceRolesInstaller {
       private String role;
       private List<String> permissions;
 
-      public String getRole() {
+      public String role() {
         return role;
       }
 
-      public void setRole(String role) {
+      public Role role(String role) {
         this.role = role;
+        return this;
       }
 
-      public List<String> getPermissions() {
+      public List<String> permissions() {
         return permissions;
       }
 
-      public void setPermissions(List<String> permissions) {
+      public Role permissions(List<String> permissions) {
         this.permissions = permissions;
+        return this;
       }
 
       @Override
