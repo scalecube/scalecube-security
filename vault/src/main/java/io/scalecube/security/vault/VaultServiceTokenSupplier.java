@@ -32,6 +32,10 @@ public class VaultServiceTokenSupplier {
         Objects.requireNonNull(builder.serviceTokenNameBuilder, "serviceTokenNameBuilder");
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   /**
    * Obtains vault service token (aka identity token or oidc token).
    *
