@@ -459,11 +459,14 @@ public class VaultServiceRolesInstaller {
     public ServiceRoles get() {
       try {
         final File file = new File(this.file);
-        return file.exists()
-            ? OBJECT_MAPPER.readValue(new FileInputStream(file), ServiceRoles.class)
-            : null;
+        if (!file.exists()) {
+          return null;
+        }
+        try (final FileInputStream fis = new FileInputStream(file)) {
+          return OBJECT_MAPPER.readValue(fis, ServiceRoles.class);
+        }
       } catch (Exception e) {
-        throw Exceptions.propagate(e);
+        throw new RuntimeException(e);
       }
     }
 
