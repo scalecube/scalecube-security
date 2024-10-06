@@ -20,15 +20,11 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.Base64.Decoder;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public final class JwksKeyProvider implements KeyProvider {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(JwksKeyProvider.class);
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -101,7 +97,6 @@ public final class JwksKeyProvider implements KeyProvider {
 
     int responseCode = httpClient.getResponseCode();
     if (responseCode != 200) {
-      LOGGER.error("[computeKey][{}] Not expected response code: {}", jwksUri, responseCode);
       throw new KeyProviderException("Not expected response code: " + responseCode);
     }
 
@@ -112,7 +107,6 @@ public final class JwksKeyProvider implements KeyProvider {
     try (InputStream inputStream = new BufferedInputStream(stream)) {
       return OBJECT_MAPPER.readValue(inputStream, JwkInfoList.class);
     } catch (IOException e) {
-      LOGGER.error("[toKeyList] Exception occurred: {}", e.toString());
       throw Exceptions.propagate(e);
     }
   }

@@ -13,6 +13,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -21,12 +23,10 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class VaultServiceRolesInstaller {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceRolesInstaller.class);
+  private static final Logger LOGGER = System.getLogger(VaultServiceRolesInstaller.class.getName());
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
@@ -68,13 +68,13 @@ public class VaultServiceRolesInstaller {
    */
   public void install() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
-      LOGGER.debug("Skipping serviceRoles installation, vaultAddress not set");
+      LOGGER.log(Level.DEBUG, "Skipping serviceRoles installation, vaultAddress not set");
       return;
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
     if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
-      LOGGER.debug("Skipping serviceRoles installation, serviceRoles not set");
+      LOGGER.log(Level.DEBUG, "Skipping serviceRoles installation, serviceRoles not set");
       return;
     }
 
@@ -90,7 +90,7 @@ public class VaultServiceRolesInstaller {
           rest.url(buildVaultIdentityRoleUri(roleName)), keyName, roleName, role.permissions);
     }
 
-    LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
+    LOGGER.log(Level.DEBUG, "Installed serviceRoles ({0})", serviceRoles);
   }
 
   private ServiceRoles loadServiceRoles() {
@@ -108,15 +108,14 @@ public class VaultServiceRolesInstaller {
     return null;
   }
 
-  private static void verifyOk(int status, String operation) {
+  private static void verifyOk(int status) {
     if (status != 200 && status != 204) {
-      LOGGER.error("Not expected status ({}) returned on [{}]", status, operation);
       throw new IllegalStateException("Not expected status returned, status=" + status);
     }
   }
 
   private void createVaultIdentityKey(Rest rest, String keyName) {
-    LOGGER.debug("[createVaultIdentityKey] {}", keyName);
+    LOGGER.log(Level.DEBUG, "[createVaultIdentityKey] {0}", keyName);
 
     byte[] body =
         Json.object()
@@ -128,7 +127,7 @@ public class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(rest.body(body).post().getStatus(), "createVaultIdentityKey");
+      verifyOk(rest.body(body).post().getStatus());
     } catch (RestException e) {
       throw new RuntimeException(e);
     }
@@ -136,7 +135,7 @@ public class VaultServiceRolesInstaller {
 
   private void createVaultIdentityRole(
       Rest rest, String keyName, String roleName, List<String> permissions) {
-    LOGGER.debug("[createVaultIdentityRole] {}", roleName);
+    LOGGER.log(Level.DEBUG, "[createVaultIdentityRole] {0}", roleName);
 
     byte[] body =
         Json.object()
@@ -147,7 +146,7 @@ public class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(rest.body(body).post().getStatus(), "createVaultIdentityRole");
+      verifyOk(rest.body(body).post().getStatus());
     } catch (RestException e) {
       throw new RuntimeException(e);
     }
