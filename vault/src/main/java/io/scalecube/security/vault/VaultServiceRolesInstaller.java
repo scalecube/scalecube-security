@@ -58,10 +58,6 @@ public class VaultServiceRolesInstaller {
     this.roleTtl = builder.roleTtl;
   }
 
-  public static Builder builder() {
-    return new Builder();
-  }
-
   /**
    * Builds vault oidc micro-infrastructure (identity roles and keys) to use it for
    * machine-to-machine authentication.
@@ -351,7 +347,7 @@ public class VaultServiceRolesInstaller {
     private String keyVerificationTtl = "1h";
     private String roleTtl = "1m";
 
-    private Builder() {}
+    public Builder() {}
 
     public Builder vaultAddress(String vaultAddress) {
       this.vaultAddress = vaultAddress;
