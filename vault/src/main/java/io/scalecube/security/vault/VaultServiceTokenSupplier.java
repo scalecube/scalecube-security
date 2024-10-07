@@ -4,17 +4,17 @@ import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import com.bettercloud.vault.rest.RestResponse;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class VaultServiceTokenSupplier {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceTokenSupplier.class);
+  private static final Logger LOGGER = System.getLogger(VaultServiceTokenSupplier.class.getName());
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
@@ -32,10 +32,6 @@ public class VaultServiceTokenSupplier {
         Objects.requireNonNull(builder.serviceTokenNameBuilder, "serviceTokenNameBuilder");
   }
 
-  public static Builder builder() {
-    return new Builder();
-  }
-
   /**
    * Obtains vault service token (aka identity token or oidc token).
    *
@@ -48,10 +44,10 @@ public class VaultServiceTokenSupplier {
       final String vaultToken = vaultTokenSupplier.get();
       final String uri = toServiceTokenUri(tags);
       final String token = rpcGetToken(uri, vaultToken);
-      LOGGER.debug("[getToken][success] uri={}, tags={}, result={}", uri, tags, mask(token));
+      LOGGER.log(
+          Level.DEBUG, "[getToken][success] uri={0}, tags={1}, result={2}", uri, tags, mask(token));
       return token;
     } catch (Exception ex) {
-      LOGGER.error("[getToken][error] tags={}, cause: {}", tags, ex.toString());
       throw new RuntimeException(ex);
     }
   }
@@ -76,7 +72,6 @@ public class VaultServiceTokenSupplier {
 
   private static void verifyOk(int status) {
     if (status != 200) {
-      LOGGER.error("[rpcGetToken] Not expected status ({}) returned", status);
       throw new IllegalStateException("Not expected status returned, status=" + status);
     }
   }
@@ -102,7 +97,7 @@ public class VaultServiceTokenSupplier {
     private Supplier<String> vaultTokenSupplier;
     private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
 
-    private Builder() {}
+    public Builder() {}
 
     public Builder vaultAddress(String vaultAddress) {
       this.vaultAddress = vaultAddress;
