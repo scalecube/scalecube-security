@@ -43,7 +43,7 @@
   <properties>
     <reactor.version>2020.0.32</reactor.version>
     <vault-java-driver.version>5.1.0</vault-java-driver.version>
-    <jackson.version>2.18.0</jackson.version>
+    <jackson.version>2.18.2</jackson.version>
     <jjwt.version>0.11.2</jjwt.version>
 
     <mockito-junit.version>4.6.1</mockito-junit.version>
