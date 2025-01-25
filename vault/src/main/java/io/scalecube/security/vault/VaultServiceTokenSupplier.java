@@ -4,17 +4,17 @@ import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import com.bettercloud.vault.rest.RestResponse;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class VaultServiceTokenSupplier {
 
-  private static final Logger LOGGER = System.getLogger(VaultServiceTokenSupplier.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceTokenSupplier.class);
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
@@ -44,8 +44,7 @@ public class VaultServiceTokenSupplier {
       final String vaultToken = vaultTokenSupplier.get();
       final String uri = toServiceTokenUri(tags);
       final String token = rpcGetToken(uri, vaultToken);
-      LOGGER.log(
-          Level.DEBUG, "[getToken][success] uri={0}, tags={1}, result={2}", uri, tags, mask(token));
+      LOGGER.debug("[getToken][success] uri={}, tags={}, result={}", uri, tags, mask(token));
       return token;
     } catch (Exception ex) {
       throw new RuntimeException(ex);

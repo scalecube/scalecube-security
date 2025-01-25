@@ -13,8 +13,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -23,10 +21,12 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class VaultServiceRolesInstaller {
 
-  private static final Logger LOGGER = System.getLogger(VaultServiceRolesInstaller.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceRolesInstaller.class);
 
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
 
@@ -64,13 +64,13 @@ public class VaultServiceRolesInstaller {
    */
   public void install() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
-      LOGGER.log(Level.DEBUG, "Skipping serviceRoles installation, vaultAddress not set");
+      LOGGER.debug("Skipping serviceRoles installation, vaultAddress not set");
       return;
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
     if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
-      LOGGER.log(Level.DEBUG, "Skipping serviceRoles installation, serviceRoles not set");
+      LOGGER.debug("Skipping serviceRoles installation, serviceRoles not set");
       return;
     }
 
@@ -86,7 +86,7 @@ public class VaultServiceRolesInstaller {
           rest.url(buildVaultIdentityRoleUri(roleName)), keyName, roleName, role.permissions);
     }
 
-    LOGGER.log(Level.DEBUG, "Installed serviceRoles ({0})", serviceRoles);
+    LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
   }
 
   private ServiceRoles loadServiceRoles() {
@@ -111,7 +111,7 @@ public class VaultServiceRolesInstaller {
   }
 
   private void createVaultIdentityKey(Rest rest, String keyName) {
-    LOGGER.log(Level.DEBUG, "[createVaultIdentityKey] {0}", keyName);
+    LOGGER.debug("[createVaultIdentityKey] {}", keyName);
 
     byte[] body =
         Json.object()
@@ -131,7 +131,7 @@ public class VaultServiceRolesInstaller {
 
   private void createVaultIdentityRole(
       Rest rest, String keyName, String roleName, List<String> permissions) {
-    LOGGER.log(Level.DEBUG, "[createVaultIdentityRole] {0}", roleName);
+    LOGGER.debug("[createVaultIdentityRole] {}", roleName);
 
     byte[] body =
         Json.object()

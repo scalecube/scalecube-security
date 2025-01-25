@@ -1,8 +1,6 @@
 package io.scalecube.security.tokens.jwt;
 
 import io.scalecube.security.tokens.jwt.jsonwebtoken.JsonwebtokenParserFactory;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.security.Key;
 import java.time.Duration;
 import java.util.Map;
@@ -10,13 +8,15 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 public final class JwtTokenResolverImpl implements JwtTokenResolver {
 
-  private static final Logger LOGGER = System.getLogger(JwtTokenResolver.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenResolver.class);
 
   private KeyProvider keyProvider;
   private JwtTokenParserFactory tokenParserFactory = new JsonwebtokenParserFactory();
@@ -100,7 +100,7 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
           String kid = (String) header.get("kid");
           Objects.requireNonNull(kid, "kid is missing");
 
-          LOGGER.log(Level.DEBUG, "[resolveToken][kid:{0}] Resolving token {1}", kid, mask(token));
+          LOGGER.debug("[resolveToken][kid:{}] Resolving token {}", kid, mask(token));
 
           // workaround to remove safely on errors
           AtomicReference<Mono<Key>> computedValueHolder = new AtomicReference<>();
@@ -110,19 +110,13 @@ public final class JwtTokenResolverImpl implements JwtTokenResolver {
               .doOnError(throwable -> cleanup(kid, computedValueHolder))
               .doOnError(
                   throwable ->
-                      LOGGER.log(
-                          Level.ERROR,
-                          "[resolveToken][kid:{0}][{1}] Exception occurred: {2}",
+                      LOGGER.error(
+                          "[resolveToken][kid:{}][{}] Exception occurred: {}",
                           kid,
                           mask(token),
                           throwable.toString()))
               .doOnSuccess(
-                  s ->
-                      LOGGER.log(
-                          Level.DEBUG,
-                          "[resolveToken][kid:{0}] Resolved token {1}",
-                          kid,
-                          mask(token)));
+                  s -> LOGGER.debug("[resolveToken][kid:{}] Resolved token {}", kid, mask(token)));
         });
   }
 
