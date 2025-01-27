@@ -7,8 +7,8 @@ import com.bettercloud.vault.rest.RestResponse;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +20,7 @@ public class VaultServiceTokenSupplier {
 
   private final String vaultAddress;
   private final String serviceRole;
-  private final Supplier<String> vaultTokenSupplier;
+  private final CompletableFuture<String> vaultTokenSupplier;
   private final BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
 
   private VaultServiceTokenSupplier(Builder builder) {
@@ -93,7 +93,7 @@ public class VaultServiceTokenSupplier {
 
     private String vaultAddress;
     private String serviceRole;
-    private Supplier<String> vaultTokenSupplier;
+    private CompletableFuture<String> vaultTokenSupplier;
     private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
 
     public Builder() {}
@@ -108,7 +108,7 @@ public class VaultServiceTokenSupplier {
       return this;
     }
 
-    public Builder vaultTokenSupplier(Supplier<String> vaultTokenSupplier) {
+    public Builder vaultTokenSupplier(CompletableFuture<String> vaultTokenSupplier) {
       this.vaultTokenSupplier = vaultTokenSupplier;
       return this;
     }
