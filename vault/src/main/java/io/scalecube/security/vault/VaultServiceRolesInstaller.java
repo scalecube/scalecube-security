@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -37,7 +39,7 @@ public class VaultServiceRolesInstaller {
       new ObjectMapper(new YAMLFactory()).setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
   private final String vaultAddress;
-  private final Supplier<String> vaultTokenSupplier;
+  private final CompletableFuture<String> vaultTokenSupplier;
   private final Supplier<String> keyNameSupplier;
   private final Function<String, String> roleNameBuilder;
   private final List<Supplier<ServiceRoles>> serviceRolesSources;
@@ -45,6 +47,8 @@ public class VaultServiceRolesInstaller {
   private final String keyRotationPeriod;
   private final String keyVerificationTtl;
   private final String roleTtl;
+  private final long timeout;
+  private final TimeUnit timeUnit;
 
   private VaultServiceRolesInstaller(Builder builder) {
     this.vaultAddress = builder.vaultAddress;
@@ -56,6 +60,8 @@ public class VaultServiceRolesInstaller {
     this.keyRotationPeriod = builder.keyRotationPeriod;
     this.keyVerificationTtl = builder.keyVerificationTtl;
     this.roleTtl = builder.roleTtl;
+    this.timeout = builder.timeout;
+    this.timeUnit = builder.timeUnit;
   }
 
   /**
@@ -74,19 +80,30 @@ public class VaultServiceRolesInstaller {
       return;
     }
 
-    final String token = vaultTokenSupplier.get();
-    final Rest rest = new Rest().header(VAULT_TOKEN_HEADER, token);
+    try {
+      vaultTokenSupplier
+          .thenAcceptAsync(
+              token -> {
+                final var rest = new Rest().header(VAULT_TOKEN_HEADER, token);
+                final var keyName = keyNameSupplier.get();
 
-    final String keyName = keyNameSupplier.get();
-    createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
+                createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
 
-    for (Role role : serviceRoles.roles) {
-      String roleName = roleNameBuilder.apply(role.role);
-      createVaultIdentityRole(
-          rest.url(buildVaultIdentityRoleUri(roleName)), keyName, roleName, role.permissions);
+                for (var role : serviceRoles.roles) {
+                  String roleName = roleNameBuilder.apply(role.role);
+                  createVaultIdentityRole(
+                      rest.url(buildVaultIdentityRoleUri(roleName)),
+                      keyName,
+                      roleName,
+                      role.permissions);
+                }
+
+                LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
+              })
+          .get(timeout, timeUnit);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
-
-    LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
   }
 
   private ServiceRoles loadServiceRoles() {
@@ -338,7 +355,7 @@ public class VaultServiceRolesInstaller {
   public static class Builder {
 
     private String vaultAddress;
-    private Supplier<String> vaultTokenSupplier;
+    private CompletableFuture<String> vaultTokenSupplier;
     private Supplier<String> keyNameSupplier;
     private Function<String, String> roleNameBuilder;
     private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
@@ -346,6 +363,8 @@ public class VaultServiceRolesInstaller {
     private String keyRotationPeriod = "1h";
     private String keyVerificationTtl = "1h";
     private String roleTtl = "1m";
+    private long timeout = 10;
+    private TimeUnit timeUnit = TimeUnit.SECONDS;
 
     public Builder() {}
 
@@ -354,7 +373,7 @@ public class VaultServiceRolesInstaller {
       return this;
     }
 
-    public Builder vaultTokenSupplier(Supplier<String> vaultTokenSupplier) {
+    public Builder vaultTokenSupplier(CompletableFuture<String> vaultTokenSupplier) {
       this.vaultTokenSupplier = vaultTokenSupplier;
       return this;
     }
@@ -396,6 +415,12 @@ public class VaultServiceRolesInstaller {
 
     public Builder roleTtl(String roleTtl) {
       this.roleTtl = roleTtl;
+      return this;
+    }
+
+    public Builder timeout(long timeout, TimeUnit timeUnit) {
+      this.timeout = timeout;
+      this.timeUnit = timeUnit;
       return this;
     }
 
