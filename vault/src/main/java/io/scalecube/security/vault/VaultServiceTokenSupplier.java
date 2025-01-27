@@ -119,7 +119,7 @@ public class VaultServiceTokenSupplier {
       return this;
     }
 
-    public VaultServiceTokenSupplier builder() {
+    public VaultServiceTokenSupplier build() {
       return new VaultServiceTokenSupplier(this);
     }
   }
