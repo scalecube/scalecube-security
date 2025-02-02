@@ -36,6 +36,7 @@
   <modules>
     <module>tokens</module>
     <module>vault</module>
+    <module>tests</module>
   </modules>
 
   <properties>
