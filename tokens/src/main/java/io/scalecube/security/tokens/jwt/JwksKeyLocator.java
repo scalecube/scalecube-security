@@ -156,21 +156,49 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     private Duration requestTimeout = Duration.ofSeconds(10);
     private int keyTtl = 60 * 1000;
 
+    /**
+     * Setter for JWKS URI. The JWKS URI typically follows a well-known pattern, such as
+     * https://server_domain/.well-known/jwks.json. This endpoint is a read-only URL that responds
+     * to GET requests by returning the JWKS in JSON format.
+     *
+     * @param jwksUri jwksUri
+     * @return this
+     */
     public Builder jwksUri(String jwksUri) {
       this.jwksUri = URI.create(jwksUri);
       return this;
     }
 
+    /**
+     * Setter for {@code connectTimeout}.
+     *
+     * @param connectTimeout connectTimeout (optional)
+     * @return this
+     */
     public Builder connectTimeout(Duration connectTimeout) {
       this.connectTimeout = connectTimeout;
       return this;
     }
 
+    /**
+     * Setter for {@code requestTimeout}.
+     *
+     * @param requestTimeout requestTimeout (optional)
+     * @return this
+     */
     public Builder requestTimeout(Duration requestTimeout) {
       this.requestTimeout = requestTimeout;
       return this;
     }
 
+    /**
+     * Setter for {@code keyTtl}. Keys that was obtained from JWKS URI gets cached for some period
+     * of time, after that they being removed from the cache. This caching time period is controlled
+     * by {@code keyTtl} setting.
+     *
+     * @param keyTtl keyTtl (optional)
+     * @return this
+     */
     public Builder keyTtl(int keyTtl) {
       this.keyTtl = keyTtl;
       return this;
