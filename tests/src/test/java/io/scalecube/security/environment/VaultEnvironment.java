@@ -203,6 +203,14 @@ public class VaultEnvironment implements AutoCloseable {
     return vaultAddr + "/v1/sys/policies/acl/" + roleName;
   }
 
+  public static Throwable getRootCause(Throwable throwable) {
+    Throwable cause;
+    while ((cause = throwable.getCause()) != null) {
+      throwable = cause;
+    }
+    return throwable;
+  }
+
   @Override
   public void close() {
     vault.stop();

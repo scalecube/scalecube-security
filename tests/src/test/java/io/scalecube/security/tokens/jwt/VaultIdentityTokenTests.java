@@ -1,5 +1,6 @@
 package io.scalecube.security.tokens.jwt;
 
+import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -11,7 +12,6 @@ import io.jsonwebtoken.Locator;
 import io.scalecube.security.environment.VaultEnvironment;
 import java.security.Key;
 import java.time.Duration;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -55,7 +55,7 @@ class VaultIdentityTokenTests {
   }
 
   @Test
-  void testJwksKeyLocatorThrowsError() throws Exception {
+  void testJwksKeyLocatorThrowsError() {
     final var token = generateToken();
 
     Locator<Key> keyLocator = mock(Locator.class);
@@ -64,11 +64,11 @@ class VaultIdentityTokenTests {
     try {
       new JsonwebtokenResolver(keyLocator).resolve(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
-    } catch (ExecutionException e) {
-      final var ex = e.getCause();
+    } catch (Exception e) {
+      final var ex = getRootCause(e);
       assertNotNull(ex);
       assertNotNull(ex.getMessage());
-      assertTrue(ex.getMessage().startsWith("Cannot get key"));
+      assertTrue(ex.getMessage().startsWith("Cannot get key"), "Exception: " + ex);
     }
   }
 

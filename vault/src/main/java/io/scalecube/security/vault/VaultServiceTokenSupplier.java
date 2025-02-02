@@ -45,11 +45,17 @@ public class VaultServiceTokenSupplier {
         .get()
         .thenApplyAsync(
             vaultToken -> {
-              final String uri = toServiceTokenUri(tags);
-              final String token = rpcGetToken(uri, vaultToken);
-              LOGGER.debug(
-                  "[getToken][success] uri={}, tags={}, result={}", uri, tags, mask(token));
-              return token;
+              final var role = serviceTokenNameBuilder.apply(serviceRole, tags);
+              final var uri = serviceTokenUri(vaultAddress, role);
+              try {
+                final var token = rpcGetToken(uri, vaultToken);
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug("Got service token: {}, role: {}", mask(token), role);
+                }
+                return token;
+              } catch (Exception ex) {
+                throw new RuntimeException("Failed to get service token, role: " + role, ex);
+              }
             });
   }
 
@@ -74,11 +80,8 @@ public class VaultServiceTokenSupplier {
     }
   }
 
-  private String toServiceTokenUri(Map<String, String> tags) {
-    return new StringJoiner("/", vaultAddress, "")
-        .add("/v1/identity/oidc/token")
-        .add(serviceTokenNameBuilder.apply(serviceRole, tags))
-        .toString();
+  private static String serviceTokenUri(final String address, final String role) {
+    return new StringJoiner("/", address, "").add("/v1/identity/oidc/token").add(role).toString();
   }
 
   private static String mask(String data) {

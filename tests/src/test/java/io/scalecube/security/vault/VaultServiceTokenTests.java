@@ -1,5 +1,6 @@
 package io.scalecube.security.vault;
 
+import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,7 +52,7 @@ public class VaultServiceTokenTests {
       serviceTokenSupplier.getToken(Collections.emptyMap()).get(3, TimeUnit.SECONDS);
       fail("Exception expected");
     } catch (ExecutionException e) {
-      final var ex = e.getCause();
+      final var ex = getRootCause(e);
       assertNotNull(ex);
       assertNotNull(ex.getMessage());
       assertTrue(
@@ -75,7 +76,7 @@ public class VaultServiceTokenTests {
       serviceTokenSupplier.getToken(Collections.emptyMap()).get(3, TimeUnit.SECONDS);
       fail("Exception expected");
     } catch (ExecutionException e) {
-      final var ex = e.getCause();
+      final var ex = getRootCause(e);
       assertNotNull(ex);
       assertNotNull(ex.getMessage());
       assertTrue(
@@ -119,7 +120,7 @@ public class VaultServiceTokenTests {
       serviceTokenSupplier.getToken(Collections.emptyMap()).get(3, TimeUnit.SECONDS);
       fail("Exception expected");
     } catch (ExecutionException e) {
-      final var ex = e.getCause();
+      final var ex = getRootCause(e);
       assertNotNull(ex);
       assertNotNull(ex.getMessage());
       assertTrue(

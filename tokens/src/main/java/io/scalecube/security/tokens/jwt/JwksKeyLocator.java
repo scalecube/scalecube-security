@@ -55,13 +55,11 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
               kid -> {
                 final var key = findKeyById(computeKeyList(), kid);
                 if (key == null) {
-                  throw new JwtTokenException("Cannot find key by kid: " + kid);
+                  throw new RuntimeException("Cannot find key by kid: " + kid);
                 }
                 return new CachedKey(key, System.currentTimeMillis() + keyTtl);
               })
           .key();
-    } catch (JwtTokenException ex) {
-      throw ex;
     } catch (Exception ex) {
       throw new JwtTokenException(ex);
     } finally {
@@ -80,12 +78,12 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
                   HttpRequest.newBuilder(jwksUri).GET().timeout(requestTimeout).build(),
                   BodyHandlers.ofInputStream());
     } catch (Exception e) {
-      throw new JwtTokenException("Failed to retrive jwk keys", e);
+      throw new RuntimeException("Failed to retrive jwk keys", e);
     }
 
     final var statusCode = httpResponse.statusCode();
     if (statusCode != 200) {
-      throw new JwtTokenException("Failed to retrive jwk keys, status: " + statusCode);
+      throw new RuntimeException("Failed to retrive jwk keys, status: " + statusCode);
     }
 
     return toJwkInfoList(httpResponse.body());

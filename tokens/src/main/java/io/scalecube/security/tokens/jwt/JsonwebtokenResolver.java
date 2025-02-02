@@ -21,27 +21,26 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
   public CompletableFuture<JwtToken> resolve(String token) {
     return CompletableFuture.supplyAsync(
             () -> {
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Resolve token: {}", mask(token));
-              }
-
               final var claimsJws =
                   Jwts.parser().keyLocator(keyLocator).build().parseSignedClaims(token);
-
               return new JwtToken(claimsJws.getHeader(), claimsJws.getPayload());
             })
-        .whenComplete(
+        .handle(
             (jwtToken, ex) -> {
               if (jwtToken != null) {
                 if (LOGGER.isDebugEnabled()) {
                   LOGGER.debug("Resolved token: {}", mask(token));
                 }
+                return jwtToken;
               }
               if (ex != null) {
-                if (LOGGER.isWarnEnabled()) {
-                  LOGGER.warn("Failed to resolve token: {}, cause: {}", mask(token), ex.toString());
+                if (ex instanceof JwtTokenException) {
+                  throw (JwtTokenException) ex;
+                } else {
+                  throw new JwtTokenException("Failed to resolve token: " + mask(token), ex);
                 }
               }
+              return null;
             });
   }
 

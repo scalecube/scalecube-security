@@ -86,12 +86,12 @@ public class VaultServiceRolesInstaller {
                 final var rest = new Rest().header(VAULT_TOKEN_HEADER, token);
                 final var keyName = keyNameSupplier.get();
 
-                createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
+                createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
 
                 for (var role : serviceRoles.roles) {
                   String roleName = roleNameBuilder.apply(role.role);
                   createVaultIdentityRole(
-                      rest.url(buildVaultIdentityRoleUri(roleName)),
+                      rest.url(vaultIdentityRoleUri(roleName)),
                       keyName,
                       roleName,
                       role.permissions);
@@ -127,9 +127,7 @@ public class VaultServiceRolesInstaller {
   }
 
   private void createVaultIdentityKey(Rest rest, String keyName) {
-    LOGGER.debug("[createVaultIdentityKey] {}", keyName);
-
-    byte[] body =
+    final byte[] body =
         Json.object()
             .add("rotation_period", keyRotationPeriod)
             .add("verification_ttl", keyVerificationTtl)
@@ -140,16 +138,15 @@ public class VaultServiceRolesInstaller {
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
+      LOGGER.debug("Created vault identity key: {}", keyName);
     } catch (RestException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to create vault identity key: " + keyName, e);
     }
   }
 
   private void createVaultIdentityRole(
       Rest rest, String keyName, String roleName, List<String> permissions) {
-    LOGGER.debug("[createVaultIdentityRole] {}", roleName);
-
-    byte[] body =
+    final byte[] body =
         Json.object()
             .add("key", keyName)
             .add("template", createTemplate(permissions))
@@ -159,8 +156,9 @@ public class VaultServiceRolesInstaller {
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
+      LOGGER.debug("Created vault identity role: {}", roleName);
     } catch (RestException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to create vault identity role: " + roleName, e);
     }
   }
 
@@ -170,14 +168,14 @@ public class VaultServiceRolesInstaller {
             Json.object().add("permissions", String.join(",", permissions)).toString().getBytes());
   }
 
-  private String buildVaultIdentityKeyUri(String keyName) {
+  private String vaultIdentityKeyUri(String keyName) {
     return new StringJoiner("/", vaultAddress, "")
         .add("/v1/identity/oidc/key")
         .add(keyName)
         .toString();
   }
 
-  private String buildVaultIdentityRoleUri(String roleName) {
+  private String vaultIdentityRoleUri(String roleName) {
     return new StringJoiner("/", vaultAddress, "")
         .add("/v1/identity/oidc/role")
         .add(roleName)
@@ -338,7 +336,7 @@ public class VaultServiceRolesInstaller {
         try (final FileInputStream fis = new FileInputStream(file)) {
           return OBJECT_MAPPER.readValue(fis, ServiceRoles.class);
         }
-      } catch (Exception e) {
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
