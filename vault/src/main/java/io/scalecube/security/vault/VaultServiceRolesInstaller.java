@@ -7,13 +7,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +37,7 @@ public class VaultServiceRolesInstaller {
       new ObjectMapper(new YAMLFactory()).setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
   private final String vaultAddress;
-  private final CompletableFuture<String> vaultTokenSupplier;
+  private final Supplier<CompletableFuture<String>> vaultTokenSupplier;
   private final Supplier<String> keyNameSupplier;
   private final Function<String, String> roleNameBuilder;
   private final List<Supplier<ServiceRoles>> serviceRolesSources;
@@ -82,6 +80,7 @@ public class VaultServiceRolesInstaller {
 
     try {
       vaultTokenSupplier
+          .get()
           .thenAcceptAsync(
               token -> {
                 final var rest = new Rest().header(VAULT_TOKEN_HEADER, token);
@@ -121,7 +120,7 @@ public class VaultServiceRolesInstaller {
     return null;
   }
 
-  private static void verifyOk(int status) {
+  private static void awaitSuccess(int status) {
     if (status != 200 && status != 204) {
       throw new IllegalStateException("Not expected status returned, status=" + status);
     }
@@ -140,7 +139,7 @@ public class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(rest.body(body).post().getStatus());
+      awaitSuccess(rest.body(body).post().getStatus());
     } catch (RestException e) {
       throw new RuntimeException(e);
     }
@@ -159,7 +158,7 @@ public class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(rest.body(body).post().getStatus());
+      awaitSuccess(rest.body(body).post().getStatus());
     } catch (RestException e) {
       throw new RuntimeException(e);
     }
@@ -355,7 +354,7 @@ public class VaultServiceRolesInstaller {
   public static class Builder {
 
     private String vaultAddress;
-    private CompletableFuture<String> vaultTokenSupplier;
+    private Supplier<CompletableFuture<String>> vaultTokenSupplier;
     private Supplier<String> keyNameSupplier;
     private Function<String, String> roleNameBuilder;
     private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
@@ -373,7 +372,7 @@ public class VaultServiceRolesInstaller {
       return this;
     }
 
-    public Builder vaultTokenSupplier(CompletableFuture<String> vaultTokenSupplier) {
+    public Builder vaultTokenSupplier(Supplier<CompletableFuture<String>> vaultTokenSupplier) {
       this.vaultTokenSupplier = vaultTokenSupplier;
       return this;
     }
@@ -390,11 +389,6 @@ public class VaultServiceRolesInstaller {
 
     public Builder serviceRolesSources(List<Supplier<ServiceRoles>> serviceRolesSources) {
       this.serviceRolesSources = serviceRolesSources;
-      return this;
-    }
-
-    public Builder serviceRolesSources(Supplier<ServiceRoles>... serviceRolesSources) {
-      this.serviceRolesSources = Arrays.asList(serviceRolesSources);
       return this;
     }
 

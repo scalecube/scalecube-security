@@ -58,7 +58,10 @@ public class VaultServiceTokenSupplier {
       final RestResponse response =
           new Rest().header(VAULT_TOKEN_HEADER, vaultToken).url(uri).get();
 
-      verifyOk(response.getStatus());
+      int status = response.getStatus();
+      if (status != 200) {
+        throw new IllegalStateException("Failed to get service token, status=" + status);
+      }
 
       return Json.parse(new String(response.getBody()))
           .asObject()
@@ -68,12 +71,6 @@ public class VaultServiceTokenSupplier {
           .asString();
     } catch (RestException e) {
       throw new RuntimeException(e);
-    }
-  }
-
-  private static void verifyOk(int status) {
-    if (status != 200) {
-      throw new IllegalStateException("Not expected status returned, status=" + status);
     }
   }
 

@@ -72,11 +72,10 @@ class VaultIdentityTokenTests {
     }
   }
 
-  private static String generateToken() throws Exception {
+  private static String generateToken() {
     String keyName = vaultEnvironment.createIdentityKey(); // oidc/key
     String roleName = vaultEnvironment.createIdentityRole(keyName); // oidc/role
-    vaultEnvironment.createIdentityTokenPolicy(roleName); // policy policyfile.hcl
-    String clientToken = vaultEnvironment.createEntity(roleName); // onboard entity with policy
+    String clientToken = vaultEnvironment.login(); // onboard entity with policy
     return vaultEnvironment.generateIdentityToken(clientToken, roleName);
   }
 }

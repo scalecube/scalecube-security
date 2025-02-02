@@ -1,5 +1,8 @@
 package io.scalecube.security.environment;
 
+import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
+
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
@@ -12,7 +15,7 @@ import org.testcontainers.vault.VaultContainer;
 
 public class VaultEnvironment implements AutoCloseable {
 
-  private static final String VAULT_TOKEN = "test";
+  private static final String VAULT_TOKEN = UUID.randomUUID().toString();
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
   private static final int PORT = 8200;
 
@@ -37,11 +40,20 @@ public class VaultEnvironment implements AutoCloseable {
     return environment;
   }
 
-  public String generateIdentityToken(String clientToken, String roleName) throws RestException {
-    RestResponse restResponse =
-        new Rest().header(VAULT_TOKEN_HEADER, clientToken).url(oidcToken(roleName)).get();
-    int status = restResponse.getStatus();
+  public String vaultAddr() {
+    return vaultAddr;
+  }
 
+  public String generateIdentityToken(String clientToken, String roleName) {
+    RestResponse restResponse;
+    try {
+      restResponse =
+          new Rest().header(VAULT_TOKEN_HEADER, clientToken).url(oidcToken(roleName)).get();
+    } catch (RestException e) {
+      throw new RuntimeException(e);
+    }
+
+    int status = restResponse.getStatus();
     if (status != 200 && status != 204) {
       throw new IllegalStateException(
           "Unexpected status code on identity token creation: " + status);
@@ -55,18 +67,22 @@ public class VaultEnvironment implements AutoCloseable {
         .asString();
   }
 
-  public void createIdentityTokenPolicy(String roleName) throws RestException {
-    int status =
-        new Rest()
-            .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
-            .url(policiesAclUri(roleName))
-            .body(
-                ("{\"policy\":\"path \\\"identity/oidc/token/"
-                        + roleName
-                        + "\\\" {capabilities=[\\\"create\\\", \\\"read\\\"]}\"}")
-                    .getBytes())
-            .post()
-            .getStatus();
+  public void createIdentityTokenPolicy(String roleName) {
+    int status;
+    try {
+      status =
+          new Rest()
+              .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
+              .url(policiesAclUri(roleName))
+              .body(
+                  ("{\"policy\":\"path \\\"identity/oidc/*"
+                          + "\\\" {capabilities=[\\\"create\\\", \\\"read\\\"]}\"}")
+                      .getBytes())
+              .post()
+              .getStatus();
+    } catch (RestException e) {
+      throw new RuntimeException(e);
+    }
 
     if (status != 200 && status != 204) {
       throw new IllegalStateException(
@@ -74,23 +90,38 @@ public class VaultEnvironment implements AutoCloseable {
     }
   }
 
-  public String createEntity(final String roleName) throws Exception {
-    checkSuccess(
-        vault
-            .execInContainer(
-                ("vault write auth/userpass/users/abc password=abc policies=" + roleName)
-                    .split("\\s"))
-            .getExitCode());
-    ExecResult loginExecResult =
-        vault.execInContainer(
-            "vault login -format json -method=userpass username=abc password=abc".split("\\s"));
-    checkSuccess(loginExecResult.getExitCode());
-    return Json.parse(loginExecResult.getStdout().replaceAll("\\r?\\n", ""))
-        .asObject()
-        .get("auth")
-        .asObject()
-        .get("client_token")
-        .asString();
+  public String login() {
+    try {
+      String username = randomAlphabetic(5);
+      String policy = randomAlphanumeric(10);
+
+      // add policy
+      createIdentityTokenPolicy(policy);
+
+      // create user and login
+      checkSuccess(
+          vault
+              .execInContainer(
+                  ("vault write auth/userpass/users/"
+                          + username
+                          + " password=abc policies="
+                          + policy)
+                      .split("\\s"))
+              .getExitCode());
+      ExecResult loginExecResult =
+          vault.execInContainer(
+              ("vault login -format json -method=userpass username=" + username + " password=abc")
+                  .split("\\s"));
+      checkSuccess(loginExecResult.getExitCode());
+      return Json.parse(loginExecResult.getStdout().replaceAll("\\r?\\n", ""))
+          .asObject()
+          .get("auth")
+          .asObject()
+          .get("client_token")
+          .asString();
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public static void checkSuccess(int exitCode) {
@@ -99,24 +130,30 @@ public class VaultEnvironment implements AutoCloseable {
     }
   }
 
-  public String createIdentityKey() throws RestException {
-    String keyName = UUID.randomUUID().toString();
-    int status =
-        new Rest()
-            .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
-            .url(oidcKeyUrl(keyName))
-            .body(
-                ("{\"rotation_period\":\""
-                        + "1m"
-                        + "\", "
-                        + "\"verification_ttl\": \""
-                        + "1m"
-                        + "\", "
-                        + "\"allowed_client_ids\": \"*\", "
-                        + "\"algorithm\": \"RS256\"}")
-                    .getBytes())
-            .post()
-            .getStatus();
+  public String createIdentityKey() {
+    String keyName = randomAlphanumeric(10);
+
+    int status;
+    try {
+      status =
+          new Rest()
+              .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
+              .url(oidcKeyUrl(keyName))
+              .body(
+                  ("{\"rotation_period\":\""
+                          + "1m"
+                          + "\", "
+                          + "\"verification_ttl\": \""
+                          + "1m"
+                          + "\", "
+                          + "\"allowed_client_ids\": \"*\", "
+                          + "\"algorithm\": \"RS256\"}")
+                      .getBytes())
+              .post()
+              .getStatus();
+    } catch (RestException e) {
+      throw new RuntimeException(e);
+    }
 
     if (status != 200 && status != 204) {
       throw new IllegalStateException("Unexpected status code on oidc/key creation: " + status);
@@ -124,15 +161,21 @@ public class VaultEnvironment implements AutoCloseable {
     return keyName;
   }
 
-  public String createIdentityRole(String keyName) throws RestException {
-    String roleName = UUID.randomUUID().toString();
-    int status =
-        new Rest()
-            .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
-            .url(oidcRoleUrl(roleName))
-            .body(("{\"key\":\"" + keyName + "\",\"ttl\": \"" + "1h" + "\"}").getBytes())
-            .post()
-            .getStatus();
+  public String createIdentityRole(String keyName) {
+    String roleName = randomAlphanumeric(10);
+
+    int status;
+    try {
+      status =
+          new Rest()
+              .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
+              .url(oidcRoleUrl(roleName))
+              .body(("{\"key\":\"" + keyName + "\",\"ttl\": \"" + "1h" + "\"}").getBytes())
+              .post()
+              .getStatus();
+    } catch (RestException e) {
+      throw new RuntimeException(e);
+    }
 
     if (status != 200 && status != 204) {
       throw new IllegalStateException("Unexpected status code on oidc/role creation: " + status);
