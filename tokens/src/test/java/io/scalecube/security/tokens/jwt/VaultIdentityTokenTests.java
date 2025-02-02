@@ -10,13 +10,13 @@ import static org.mockito.Mockito.when;
 import io.jsonwebtoken.Locator;
 import java.security.Key;
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class VaultIdentityTokenTests {
-
-  private static final Duration TIMEOUT = Duration.ofSeconds(3);
 
   private static VaultEnvironment vaultEnvironment;
 
@@ -45,7 +45,7 @@ class VaultIdentityTokenTests {
                     .keyTtl(1000)
                     .build())
             .resolve(token)
-            .block(TIMEOUT);
+            .get(3, TimeUnit.SECONDS);
 
     assertNotNull(jwtToken, "jwtToken");
     assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
@@ -60,9 +60,11 @@ class VaultIdentityTokenTests {
     when(keyLocator.locate(any())).thenThrow(new RuntimeException("Cannot get key"));
 
     try {
-      new JsonwebtokenResolver(keyLocator).resolve(token).block(TIMEOUT);
+      new JsonwebtokenResolver(keyLocator).resolve(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
-    } catch (Exception ex) {
+    } catch (ExecutionException e) {
+      final var ex = e.getCause();
+      assertNotNull(ex);
       assertNotNull(ex.getMessage());
       assertTrue(ex.getMessage().startsWith("Cannot get key"));
     }

@@ -1,6 +1,6 @@
 package io.scalecube.security.tokens.jwt;
 
-import reactor.core.publisher.Mono;
+import java.util.concurrent.CompletableFuture;
 
 public interface JwtTokenResolver {
 
@@ -10,5 +10,5 @@ public interface JwtTokenResolver {
    * @param token jwt token
    * @return mono result with parsed claims (or error)
    */
-  Mono<JwtToken> resolve(String token);
+  CompletableFuture<JwtToken> resolve(String token);
 }
