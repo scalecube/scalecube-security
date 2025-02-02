@@ -13,7 +13,6 @@
   <artifactId>scalecube-security-parent</artifactId>
   <version>1.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>ScaleCube Security</name>
 
   <repositories>
     <repository>
@@ -35,22 +34,22 @@
   </scm>
 
   <modules>
-    <module>jwt</module>
     <module>tokens</module>
     <module>vault</module>
+    <module>tests</module>
   </modules>
 
   <properties>
-    <reactor.version>2020.0.32</reactor.version>
     <vault-java-driver.version>5.1.0</vault-java-driver.version>
     <jackson.version>2.18.2</jackson.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <jjwt.version>0.11.2</jjwt.version>
+    <jjwt.version>0.12.6</jjwt.version>
 
     <mockito-junit.version>4.6.1</mockito-junit.version>
     <junit-jupiter.version>5.8.2</junit-jupiter.version>
     <hamcrest.version>1.3</hamcrest.version>
-    <testcontainers.version>1.20.1</testcontainers.version>
+    <log4j.version>2.17.2</log4j.version>
+    <testcontainers.version>1.20.4</testcontainers.version>
 
     <distributionManagement.url>https://maven.pkg.github.com/scalecube/scalecube-security
     </distributionManagement.url>
@@ -64,14 +63,6 @@
         <groupId>com.bettercloud</groupId>
         <artifactId>vault-java-driver</artifactId>
         <version>${vault-java-driver.version}</version>
-      </dependency>
-      <!-- Reactor -->
-      <dependency>
-        <groupId>io.projectreactor</groupId>
-        <artifactId>reactor-bom</artifactId>
-        <version>${reactor.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
       </dependency>
       <!-- Slf4j -->
       <dependency>
@@ -103,12 +94,21 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Logging -->
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>${log4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <!-- Test -->
       <dependency>
         <groupId>org.testcontainers</groupId>
-        <artifactId>vault</artifactId>
+        <artifactId>testcontainers-bom</artifactId>
         <version>${testcontainers.version}</version>
-        <scope>test</scope>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -134,14 +134,30 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${mockito-junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-all</artifactId>
       <version>${hamcrest.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>io.projectreactor</groupId>
-      <artifactId>reactor-test</artifactId>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>vault</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

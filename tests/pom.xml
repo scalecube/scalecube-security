@@ -10,24 +10,29 @@
     <version>1.1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>scalecube-security-tokens</artifactId>
+  <artifactId>scalecube-security-tests</artifactId>
 
   <dependencies>
     <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-api</artifactId>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-security-tokens</artifactId>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-impl</artifactId>
+      <groupId>io.scalecube</groupId>
+      <artifactId>scalecube-security-vault</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <!-- Tests -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>vault</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-jackson</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
+      <groupId>com.bettercloud</groupId>
+      <artifactId>vault-java-driver</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

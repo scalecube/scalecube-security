@@ -7,13 +7,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +37,7 @@ public class VaultServiceRolesInstaller {
       new ObjectMapper(new YAMLFactory()).setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
   private final String vaultAddress;
-  private final CompletableFuture<String> vaultTokenSupplier;
+  private final Supplier<CompletableFuture<String>> vaultTokenSupplier;
   private final Supplier<String> keyNameSupplier;
   private final Function<String, String> roleNameBuilder;
   private final List<Supplier<ServiceRoles>> serviceRolesSources;
@@ -82,17 +80,18 @@ public class VaultServiceRolesInstaller {
 
     try {
       vaultTokenSupplier
+          .get()
           .thenAcceptAsync(
               token -> {
                 final var rest = new Rest().header(VAULT_TOKEN_HEADER, token);
                 final var keyName = keyNameSupplier.get();
 
-                createVaultIdentityKey(rest.url(buildVaultIdentityKeyUri(keyName)), keyName);
+                createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
 
                 for (var role : serviceRoles.roles) {
                   String roleName = roleNameBuilder.apply(role.role);
                   createVaultIdentityRole(
-                      rest.url(buildVaultIdentityRoleUri(roleName)),
+                      rest.url(vaultIdentityRoleUri(roleName)),
                       keyName,
                       roleName,
                       role.permissions);
@@ -121,16 +120,14 @@ public class VaultServiceRolesInstaller {
     return null;
   }
 
-  private static void verifyOk(int status) {
+  private static void awaitSuccess(int status) {
     if (status != 200 && status != 204) {
       throw new IllegalStateException("Not expected status returned, status=" + status);
     }
   }
 
   private void createVaultIdentityKey(Rest rest, String keyName) {
-    LOGGER.debug("[createVaultIdentityKey] {}", keyName);
-
-    byte[] body =
+    final byte[] body =
         Json.object()
             .add("rotation_period", keyRotationPeriod)
             .add("verification_ttl", keyVerificationTtl)
@@ -140,17 +137,16 @@ public class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(rest.body(body).post().getStatus());
+      awaitSuccess(rest.body(body).post().getStatus());
+      LOGGER.debug("Created vault identity key: {}", keyName);
     } catch (RestException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to create vault identity key: " + keyName, e);
     }
   }
 
   private void createVaultIdentityRole(
       Rest rest, String keyName, String roleName, List<String> permissions) {
-    LOGGER.debug("[createVaultIdentityRole] {}", roleName);
-
-    byte[] body =
+    final byte[] body =
         Json.object()
             .add("key", keyName)
             .add("template", createTemplate(permissions))
@@ -159,9 +155,10 @@ public class VaultServiceRolesInstaller {
             .getBytes();
 
     try {
-      verifyOk(rest.body(body).post().getStatus());
+      awaitSuccess(rest.body(body).post().getStatus());
+      LOGGER.debug("Created vault identity role: {}", roleName);
     } catch (RestException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException("Failed to create vault identity role: " + roleName, e);
     }
   }
 
@@ -171,14 +168,14 @@ public class VaultServiceRolesInstaller {
             Json.object().add("permissions", String.join(",", permissions)).toString().getBytes());
   }
 
-  private String buildVaultIdentityKeyUri(String keyName) {
+  private String vaultIdentityKeyUri(String keyName) {
     return new StringJoiner("/", vaultAddress, "")
         .add("/v1/identity/oidc/key")
         .add(keyName)
         .toString();
   }
 
-  private String buildVaultIdentityRoleUri(String roleName) {
+  private String vaultIdentityRoleUri(String roleName) {
     return new StringJoiner("/", vaultAddress, "")
         .add("/v1/identity/oidc/role")
         .add(roleName)
@@ -339,7 +336,7 @@ public class VaultServiceRolesInstaller {
         try (final FileInputStream fis = new FileInputStream(file)) {
           return OBJECT_MAPPER.readValue(fis, ServiceRoles.class);
         }
-      } catch (Exception e) {
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
@@ -355,7 +352,7 @@ public class VaultServiceRolesInstaller {
   public static class Builder {
 
     private String vaultAddress;
-    private CompletableFuture<String> vaultTokenSupplier;
+    private Supplier<CompletableFuture<String>> vaultTokenSupplier;
     private Supplier<String> keyNameSupplier;
     private Function<String, String> roleNameBuilder;
     private List<Supplier<ServiceRoles>> serviceRolesSources = DEFAULT_SERVICE_ROLES_SOURCES;
@@ -373,7 +370,7 @@ public class VaultServiceRolesInstaller {
       return this;
     }
 
-    public Builder vaultTokenSupplier(CompletableFuture<String> vaultTokenSupplier) {
+    public Builder vaultTokenSupplier(Supplier<CompletableFuture<String>> vaultTokenSupplier) {
       this.vaultTokenSupplier = vaultTokenSupplier;
       return this;
     }
@@ -390,11 +387,6 @@ public class VaultServiceRolesInstaller {
 
     public Builder serviceRolesSources(List<Supplier<ServiceRoles>> serviceRolesSources) {
       this.serviceRolesSources = serviceRolesSources;
-      return this;
-    }
-
-    public Builder serviceRolesSources(Supplier<ServiceRoles>... serviceRolesSources) {
-      this.serviceRolesSources = Arrays.asList(serviceRolesSources);
       return this;
     }
 

@@ -1,23 +1,14 @@
 package io.scalecube.security.tokens.jwt;
 
-import java.util.Map;
-import reactor.core.publisher.Mono;
+import java.util.concurrent.CompletableFuture;
 
 public interface JwtTokenResolver {
 
   /**
-   * Parses and returns token claims without verification.
-   *
-   * @param token jwt token
-   * @return parsed claims
-   */
-  Map<String, Object> parseBody(String token);
-
-  /**
-   * Verifies and returns token claims if everything went ok.
+   * Verifies and returns token claims.
    *
    * @param token jwt token
    * @return mono result with parsed claims (or error)
    */
-  Mono<Map<String, Object>> resolve(String token);
+  CompletableFuture<JwtToken> resolve(String token);
 }

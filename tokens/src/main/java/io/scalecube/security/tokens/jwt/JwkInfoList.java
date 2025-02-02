@@ -1,18 +1,19 @@
 package io.scalecube.security.tokens.jwt;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 
 public class JwkInfoList {
 
-  private List<JwkInfo> keys = Collections.emptyList();
+  private final List<JwkInfo> keys;
 
-  public JwkInfoList() {}
+  public JwkInfoList() {
+    this(null);
+  }
 
   public JwkInfoList(List<JwkInfo> keys) {
-    this.keys = new ArrayList<>(keys);
+    this.keys = keys != null ? new ArrayList<>(keys) : null;
   }
 
   public List<JwkInfo> keys() {
@@ -22,7 +23,7 @@ public class JwkInfoList {
   @Override
   public String toString() {
     return new StringJoiner(", ", JwkInfoList.class.getSimpleName() + "[", "]")
-        .add("keys=" + keys)
+        .add("keys=" + (keys != null ? "[" + keys.size() + "]" : null))
         .toString();
   }
 }
