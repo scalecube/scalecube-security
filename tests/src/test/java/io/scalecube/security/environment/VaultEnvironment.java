@@ -1,4 +1,4 @@
-package io.scalecube.security.tokens.jwt;
+package io.scalecube.security.environment;
 
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;

@@ -8,11 +8,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.jsonwebtoken.Locator;
+import io.scalecube.security.environment.VaultEnvironment;
 import java.security.Key;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -48,8 +50,8 @@ class VaultIdentityTokenTests {
             .get(3, TimeUnit.SECONDS);
 
     assertNotNull(jwtToken, "jwtToken");
-    assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
-    assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
+    Assertions.assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
+    Assertions.assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
   }
 
   @Test
