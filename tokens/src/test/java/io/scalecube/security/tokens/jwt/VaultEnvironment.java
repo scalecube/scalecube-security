@@ -4,36 +4,40 @@ import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import com.bettercloud.vault.rest.RestResponse;
-import java.io.IOException;
 import java.util.UUID;
 import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.vault.VaultContainer;
 
-public class VaultEnvironment {
+public class VaultEnvironment implements AutoCloseable {
 
   private static final String VAULT_TOKEN = "test";
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
+  private static final int PORT = 8200;
 
-  private static final GenericContainer VAULT_CONTAINER =
+  private final GenericContainer vault =
       new VaultContainer("vault:1.4.0")
           .withVaultToken(VAULT_TOKEN)
           .waitingFor(new LogMessageWaitStrategy().withRegEx("^.*Vault server started!.*$"));
 
-  private static String vaultAddr;
+  private String vaultAddr;
 
-  public static void start() {
-    VAULT_CONTAINER.start();
-    vaultAddr = "http://localhost:" + VAULT_CONTAINER.getMappedPort(8200);
+  public static VaultEnvironment start() {
+    final var environment = new VaultEnvironment();
+    try {
+      final var vault = environment.vault;
+      vault.start();
+      environment.vaultAddr = "http://localhost:" + vault.getMappedPort(PORT);
+      checkSuccess(vault.execInContainer("vault auth enable userpass".split("\\s")).getExitCode());
+    } catch (Exception ex) {
+      environment.close();
+      throw new RuntimeException(ex);
+    }
+    return environment;
   }
 
-  public static void stop() {
-    VAULT_CONTAINER.stop();
-  }
-
-  public static String generateIdentityToken(String clientToken, String roleName)
-      throws RestException {
+  public String generateIdentityToken(String clientToken, String roleName) throws RestException {
     RestResponse restResponse =
         new Rest().header(VAULT_TOKEN_HEADER, clientToken).url(oidcToken(roleName)).get();
     int status = restResponse.getStatus();
@@ -51,7 +55,7 @@ public class VaultEnvironment {
         .asString();
   }
 
-  public static void createIdentityTokenPolicy(String roleName) throws RestException {
+  public void createIdentityTokenPolicy(String roleName) throws RestException {
     int status =
         new Rest()
             .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
@@ -70,20 +74,15 @@ public class VaultEnvironment {
     }
   }
 
-  public static String createEntity(final String roleName)
-      throws IOException, InterruptedException {
-
+  public String createEntity(final String roleName) throws Exception {
     checkSuccess(
-        VAULT_CONTAINER.execInContainer("vault auth enable userpass".split("\\s")).getExitCode());
-    checkSuccess(
-        VAULT_CONTAINER
+        vault
             .execInContainer(
                 ("vault write auth/userpass/users/abc password=abc policies=" + roleName)
                     .split("\\s"))
             .getExitCode());
-
     ExecResult loginExecResult =
-        VAULT_CONTAINER.execInContainer(
+        vault.execInContainer(
             "vault login -format json -method=userpass username=abc password=abc".split("\\s"));
     checkSuccess(loginExecResult.getExitCode());
     return Json.parse(loginExecResult.getStdout().replaceAll("\\r?\\n", ""))
@@ -100,7 +99,7 @@ public class VaultEnvironment {
     }
   }
 
-  public static String createIdentityKey() throws RestException {
+  public String createIdentityKey() throws RestException {
     String keyName = UUID.randomUUID().toString();
     int status =
         new Rest()
@@ -125,7 +124,7 @@ public class VaultEnvironment {
     return keyName;
   }
 
-  public static String createIdentityRole(String keyName) throws RestException {
+  public String createIdentityRole(String keyName) throws RestException {
     String roleName = UUID.randomUUID().toString();
     int status =
         new Rest()
@@ -141,23 +140,28 @@ public class VaultEnvironment {
     return roleName;
   }
 
-  public static String oidcKeyUrl(String keyName) {
+  public String oidcKeyUrl(String keyName) {
     return vaultAddr + "/v1/identity/oidc/key/" + keyName;
   }
 
-  public static String oidcRoleUrl(String roleName) {
+  public String oidcRoleUrl(String roleName) {
     return vaultAddr + "/v1/identity/oidc/role/" + roleName;
   }
 
-  public static String oidcToken(String roleName) {
+  public String oidcToken(String roleName) {
     return vaultAddr + "/v1/identity/oidc/token/" + roleName;
   }
 
-  public static String jwksUri() {
+  public String jwksUri() {
     return vaultAddr + "/v1/identity/oidc/.well-known/keys";
   }
 
-  public static String policiesAclUri(String roleName) {
+  public String policiesAclUri(String roleName) {
     return vaultAddr + "/v1/sys/policies/acl/" + roleName;
+  }
+
+  @Override
+  public void close() {
+    vault.stop();
   }
 }
