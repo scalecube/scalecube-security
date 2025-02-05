@@ -2,6 +2,8 @@ package io.scalecube.security.vault;
 
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -18,7 +20,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -54,9 +55,7 @@ public class VaultServiceTokenTests {
     } catch (ExecutionException e) {
       final var ex = getRootCause(e);
       assertNotNull(ex);
-      assertNotNull(ex.getMessage());
-      assertTrue(
-          ex.getMessage().contains("Failed to get service token, status=403"), "Exception: " + ex);
+      assertThat(ex.getMessage(), startsWith("Failed to get service token, status=403"));
     }
   }
 
@@ -78,9 +77,7 @@ public class VaultServiceTokenTests {
     } catch (ExecutionException e) {
       final var ex = getRootCause(e);
       assertNotNull(ex);
-      assertNotNull(ex.getMessage());
-      assertTrue(
-          ex.getMessage().contains("Failed to get service token, status=400"), "Exception: " + ex);
+      assertThat(ex.getMessage(), startsWith("Failed to get service token, status=400"));
     }
   }
 
@@ -122,9 +119,7 @@ public class VaultServiceTokenTests {
     } catch (ExecutionException e) {
       final var ex = getRootCause(e);
       assertNotNull(ex);
-      assertNotNull(ex.getMessage());
-      assertTrue(
-          ex.getMessage().contains("Failed to get service token, status=400"), "Exception: " + ex);
+      assertThat(ex.getMessage(), startsWith("Failed to get service token, status=400"));
     }
   }
 
@@ -164,8 +159,8 @@ public class VaultServiceTokenTests {
             .get(3, TimeUnit.SECONDS);
 
     assertNotNull(jwtToken, "jwtToken");
-    Assertions.assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
-    Assertions.assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
+    assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
+    assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
   }
 
   private static String toQualifiedName(String role, Map<String, String> tags) {

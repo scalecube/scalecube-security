@@ -1,6 +1,9 @@
 package io.scalecube.security.tokens.jwt;
 
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -14,7 +17,6 @@ import java.security.Key;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -50,8 +52,8 @@ public class JsonwebtokenResolverTests {
             .get(3, TimeUnit.SECONDS);
 
     assertNotNull(jwtToken, "jwtToken");
-    Assertions.assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
-    Assertions.assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
+    assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
+    assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
   }
 
   @Test
@@ -66,9 +68,25 @@ public class JsonwebtokenResolverTests {
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
-      assertNotNull(ex);
-      assertNotNull(ex.getMessage());
-      assertTrue(ex.getMessage().startsWith("Cannot get key"), "Exception: " + ex);
+      assertThat(ex, instanceOf(RuntimeException.class));
+      assertThat(ex.getMessage(), startsWith("Cannot get key"));
+    }
+  }
+
+  @Test
+  void testJwksKeyLocatorThrowsRetryableError() {
+    final var token = generateToken();
+
+    Locator<Key> keyLocator = mock(Locator.class);
+    when(keyLocator.locate(any())).thenThrow(new JwtUnavailableException("JWKS timeout"));
+
+    try {
+      new JsonwebtokenResolver(keyLocator).resolve(token).get(3, TimeUnit.SECONDS);
+      fail("Expected exception");
+    } catch (Exception e) {
+      final var ex = getRootCause(e);
+      assertThat(ex, instanceOf(JwtUnavailableException.class));
+      assertThat(ex.getMessage(), startsWith("JWKS timeout"));
     }
   }
 

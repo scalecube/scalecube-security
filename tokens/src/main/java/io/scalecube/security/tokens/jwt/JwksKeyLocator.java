@@ -17,6 +17,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.net.http.HttpTimeoutException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -55,13 +56,11 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
               kid -> {
                 final var key = findKeyById(computeKeyList(), kid);
                 if (key == null) {
-                  throw new RuntimeException("Cannot find key by kid: " + kid);
+                  throw new JwtUnavailableException("Cannot find key by kid: " + kid);
                 }
                 return new CachedKey(key, System.currentTimeMillis() + keyTtl);
               })
           .key();
-    } catch (Exception ex) {
-      throw new JwtTokenException(ex);
     } finally {
       tryCleanup();
     }
@@ -77,8 +76,13 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
               .send(
                   HttpRequest.newBuilder(jwksUri).GET().timeout(requestTimeout).build(),
                   BodyHandlers.ofInputStream());
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to retrive jwk keys", e);
+    } catch (HttpTimeoutException e) {
+      throw new JwtUnavailableException("Failed to retrive jwk keys", e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
     }
 
     final var statusCode = httpResponse.statusCode();
