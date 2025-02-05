@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 
+import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
 import io.scalecube.security.tokens.jwt.JsonwebtokenResolver;
 import io.scalecube.security.tokens.jwt.JwksKeyLocator;
@@ -19,28 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(IntegrationEnvironmentFixture.class)
 public class VaultServiceTokenTests {
 
-  private static VaultEnvironment vaultEnvironment;
-
-  @BeforeAll
-  static void beforeAll() {
-    vaultEnvironment = VaultEnvironment.start();
-  }
-
-  @AfterAll
-  static void afterAll() {
-    if (vaultEnvironment != null) {
-      vaultEnvironment.close();
-    }
-  }
-
   @Test
-  void testGetServiceTokenUsingWrongCredentials() throws Exception {
+  void testGetServiceTokenUsingWrongCredentials(VaultEnvironment vaultEnvironment)
+      throws Exception {
     final var serviceTokenSupplier =
         new VaultServiceTokenSupplier.Builder()
             .vaultAddress(vaultEnvironment.vaultAddr())
@@ -60,7 +48,7 @@ public class VaultServiceTokenTests {
   }
 
   @Test
-  void testGetNonExistingServiceToken() throws Exception {
+  void testGetNonExistingServiceToken(VaultEnvironment vaultEnvironment) throws Exception {
     final var nonExistingServiceRole = "non-existing-role-" + System.currentTimeMillis();
 
     final var serviceTokenSupplier =
@@ -82,7 +70,7 @@ public class VaultServiceTokenTests {
   }
 
   @Test
-  void testGetServiceTokenByWrongServiceRole() throws Exception {
+  void testGetServiceTokenByWrongServiceRole(VaultEnvironment vaultEnvironment) throws Exception {
     final var now = System.currentTimeMillis();
     final var serviceRole1 = "role1-" + now;
     final var serviceRole2 = "role2-" + now;
@@ -124,7 +112,7 @@ public class VaultServiceTokenTests {
   }
 
   @Test
-  void testGetServiceTokenSuccessfully() throws Exception {
+  void testGetServiceTokenSuccessfully(VaultEnvironment vaultEnvironment) throws Exception {
     final var now = System.currentTimeMillis();
     final var serviceRole = "role-" + now;
     final var tags = Map.of("type", "ops", "ns", "develop");

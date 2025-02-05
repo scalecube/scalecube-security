@@ -211,6 +211,13 @@ public class VaultEnvironment implements AutoCloseable {
     return throwable;
   }
 
+  public String newServiceToken() {
+    String keyName = createIdentityKey(); // oidc/key
+    String roleName = createIdentityRole(keyName); // oidc/role
+    String clientToken = login(); // onboard entity with policy
+    return generateIdentityToken(clientToken, roleName);
+  }
+
   @Override
   public void close() {
     vault.stop();

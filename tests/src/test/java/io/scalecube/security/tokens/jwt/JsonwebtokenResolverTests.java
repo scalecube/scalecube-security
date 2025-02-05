@@ -12,33 +12,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.jsonwebtoken.Locator;
+import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
 import java.security.Key;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(IntegrationEnvironmentFixture.class)
 public class JsonwebtokenResolverTests {
 
-  private static VaultEnvironment vaultEnvironment;
-
-  @BeforeAll
-  static void beforeAll() {
-    vaultEnvironment = VaultEnvironment.start();
-  }
-
-  @AfterAll
-  static void afterAll() {
-    if (vaultEnvironment != null) {
-      vaultEnvironment.close();
-    }
-  }
-
   @Test
-  void testResolveTokenSuccessfully() throws Exception {
-    final var token = generateToken();
+  void testResolveTokenSuccessfully(VaultEnvironment vaultEnvironment) throws Exception {
+    final var token = vaultEnvironment.newServiceToken();
 
     final var jwtToken =
         new JsonwebtokenResolver(
@@ -57,8 +44,8 @@ public class JsonwebtokenResolverTests {
   }
 
   @Test
-  void testJwksKeyLocatorThrowsError() {
-    final var token = generateToken();
+  void testJwksKeyLocatorThrowsError(VaultEnvironment vaultEnvironment) {
+    final var token = vaultEnvironment.newServiceToken();
 
     Locator<Key> keyLocator = mock(Locator.class);
     when(keyLocator.locate(any())).thenThrow(new RuntimeException("Cannot get key"));
@@ -74,8 +61,8 @@ public class JsonwebtokenResolverTests {
   }
 
   @Test
-  void testJwksKeyLocatorThrowsRetryableError() {
-    final var token = generateToken();
+  void testJwksKeyLocatorThrowsRetryableError(VaultEnvironment vaultEnvironment) {
+    final var token = vaultEnvironment.newServiceToken();
 
     Locator<Key> keyLocator = mock(Locator.class);
     when(keyLocator.locate(any())).thenThrow(new JwtUnavailableException("JWKS timeout"));
@@ -88,12 +75,5 @@ public class JsonwebtokenResolverTests {
       assertThat(ex, instanceOf(JwtUnavailableException.class));
       assertThat(ex.getMessage(), startsWith("JWKS timeout"));
     }
-  }
-
-  private static String generateToken() {
-    String keyName = vaultEnvironment.createIdentityKey(); // oidc/key
-    String roleName = vaultEnvironment.createIdentityRole(keyName); // oidc/role
-    String clientToken = vaultEnvironment.login(); // onboard entity with policy
-    return vaultEnvironment.generateIdentityToken(clientToken, roleName);
   }
 }
