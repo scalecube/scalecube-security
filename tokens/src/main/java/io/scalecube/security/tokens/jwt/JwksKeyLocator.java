@@ -47,6 +47,10 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     this.keyTtl = builder.keyTtl;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   @Override
   protected Key locate(JwsHeader header) {
     try {
@@ -159,6 +163,8 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     private Duration connectTimeout = Duration.ofSeconds(10);
     private Duration requestTimeout = Duration.ofSeconds(10);
     private int keyTtl = 60 * 1000;
+
+    private Builder() {}
 
     /**
      * Setter for JWKS URI. The JWKS URI typically follows a well-known pattern, such as

@@ -62,6 +62,10 @@ public class VaultServiceRolesInstaller {
     this.timeUnit = builder.timeUnit;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   /**
    * Builds vault oidc micro-infrastructure (identity roles and keys) to use it for
    * machine-to-machine authentication.
@@ -363,7 +367,7 @@ public class VaultServiceRolesInstaller {
     private long timeout = 10;
     private TimeUnit timeUnit = TimeUnit.SECONDS;
 
-    public Builder() {}
+    private Builder() {}
 
     public Builder vaultAddress(String vaultAddress) {
       this.vaultAddress = vaultAddress;

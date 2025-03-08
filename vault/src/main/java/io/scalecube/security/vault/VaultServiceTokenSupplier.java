@@ -33,6 +33,10 @@ public class VaultServiceTokenSupplier {
         Objects.requireNonNull(builder.serviceTokenNameBuilder, "serviceTokenNameBuilder");
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   /**
    * Obtains vault service token (aka identity token or oidc token).
    *
@@ -98,7 +102,7 @@ public class VaultServiceTokenSupplier {
     private Supplier<CompletableFuture<String>> vaultTokenSupplier;
     private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
 
-    public Builder() {}
+    private Builder() {}
 
     /**
      * Setter for {@code vaultAddress}.
