@@ -97,7 +97,7 @@ public class VaultServiceRolesInstaller {
                   createVaultIdentityRole(
                       rest.url(vaultIdentityRoleUri(roleName)),
                       keyName,
-                      roleName,
+                      role.role,
                       role.permissions);
                 }
 
