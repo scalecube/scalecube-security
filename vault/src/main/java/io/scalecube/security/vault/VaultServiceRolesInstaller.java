@@ -93,7 +93,7 @@ public class VaultServiceRolesInstaller {
                 createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
 
                 for (var role : serviceRoles.roles) {
-                  String roleName = roleNameBuilder.apply(role.role);
+                  final var roleName = roleNameBuilder.apply(role.role);
                   createVaultIdentityRole(
                       rest.url(vaultIdentityRoleUri(roleName)),
                       keyName,
@@ -153,7 +153,7 @@ public class VaultServiceRolesInstaller {
     final byte[] body =
         Json.object()
             .add("key", keyName)
-            .add("template", createTemplate(permissions))
+            .add("template", createTemplate(roleName, permissions))
             .add("ttl", roleTtl)
             .toString()
             .getBytes();
@@ -166,10 +166,14 @@ public class VaultServiceRolesInstaller {
     }
   }
 
-  private static String createTemplate(List<String> permissions) {
+  private static String createTemplate(String roleName, List<String> permissions) {
     return Base64.getUrlEncoder()
         .encodeToString(
-            Json.object().add("permissions", String.join(",", permissions)).toString().getBytes());
+            Json.object()
+                .add("role", roleName)
+                .add("permissions", String.join(",", permissions))
+                .toString()
+                .getBytes());
   }
 
   private String vaultIdentityKeyUri(String keyName) {
