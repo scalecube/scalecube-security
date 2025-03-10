@@ -12,6 +12,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -138,7 +139,7 @@ public class VaultServiceRolesInstaller {
             .add("allowed_client_ids", "*")
             .add("algorithm", keyAlgorithm)
             .toString()
-            .getBytes();
+            .getBytes(StandardCharsets.UTF_8);
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
@@ -156,7 +157,7 @@ public class VaultServiceRolesInstaller {
             .add("template", createTemplate(roleName, permissions))
             .add("ttl", roleTtl)
             .toString()
-            .getBytes();
+            .getBytes(StandardCharsets.UTF_8);
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
@@ -173,7 +174,7 @@ public class VaultServiceRolesInstaller {
                 .add("role", roleName)
                 .add("permissions", String.join(",", permissions))
                 .toString()
-                .getBytes());
+                .getBytes(StandardCharsets.UTF_8));
   }
 
   private String vaultIdentityKeyUri(String keyName) {
