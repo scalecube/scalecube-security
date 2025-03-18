@@ -50,15 +50,18 @@ public class VaultServiceRolesInstaller {
   private final TimeUnit timeUnit;
 
   private VaultServiceRolesInstaller(Builder builder) {
-    this.vaultAddress = builder.vaultAddress;
-    this.vaultTokenSupplier = builder.vaultTokenSupplier;
-    this.keyNameSupplier = builder.keyNameSupplier;
-    this.roleNameBuilder = builder.roleNameBuilder;
-    this.serviceRolesSources = builder.serviceRolesSources;
-    this.keyAlgorithm = builder.keyAlgorithm;
-    this.keyRotationPeriod = builder.keyRotationPeriod;
-    this.keyVerificationTtl = builder.keyVerificationTtl;
-    this.roleTtl = builder.roleTtl;
+    this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
+    this.vaultTokenSupplier =
+        Objects.requireNonNull(builder.vaultTokenSupplier, "vaultTokenSupplier");
+    this.keyNameSupplier = Objects.requireNonNull(builder.keyNameSupplier, "keyNameSupplier");
+    this.roleNameBuilder = Objects.requireNonNull(builder.roleNameBuilder, "roleNameBuilder");
+    this.serviceRolesSources =
+        Objects.requireNonNull(builder.serviceRolesSources, "serviceRolesSources");
+    this.keyAlgorithm = Objects.requireNonNull(builder.keyAlgorithm, "keyAlgorithm");
+    this.keyRotationPeriod = Objects.requireNonNull(builder.keyRotationPeriod, "keyRotationPeriod");
+    this.keyVerificationTtl =
+        Objects.requireNonNull(builder.keyVerificationTtl, "keyVerificationTtl");
+    this.roleTtl = Objects.requireNonNull(builder.roleTtl, "roleTtl");
     this.timeout = builder.timeout;
     this.timeUnit = builder.timeUnit;
   }
