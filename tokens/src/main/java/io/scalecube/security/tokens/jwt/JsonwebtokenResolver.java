@@ -3,6 +3,7 @@ package io.scalecube.security.tokens.jwt;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Locator;
 import java.security.Key;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +15,7 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
   private final Locator<Key> keyLocator;
 
   public JsonwebtokenResolver(Locator<Key> keyLocator) {
-    this.keyLocator = keyLocator;
+    this.keyLocator = Objects.requireNonNull(keyLocator, "keyLocator");
   }
 
   @Override

@@ -25,6 +25,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,9 +42,9 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
   private final ReentrantLock cleanupLock = new ReentrantLock();
 
   private JwksKeyLocator(Builder builder) {
-    this.jwksUri = builder.jwksUri;
-    this.connectTimeout = builder.connectTimeout;
-    this.requestTimeout = builder.requestTimeout;
+    this.jwksUri = Objects.requireNonNull(builder.jwksUri, "jwksUri");
+    this.connectTimeout = Objects.requireNonNull(builder.connectTimeout, "connectTimeout");
+    this.requestTimeout = Objects.requireNonNull(builder.requestTimeout, "requestTimeout");
     this.keyTtl = builder.keyTtl;
   }
 
