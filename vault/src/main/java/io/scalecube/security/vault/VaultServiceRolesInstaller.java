@@ -76,13 +76,13 @@ public class VaultServiceRolesInstaller {
    */
   public void install() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
-      LOGGER.debug("Skipping serviceRoles installation, vaultAddress not set");
+      LOGGER.debug("Skipping service roles installation, vault address not set");
       return;
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
     if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
-      LOGGER.debug("Skipping serviceRoles installation, serviceRoles not set");
+      LOGGER.debug("Skipping service roles installation, service roles not set");
       return;
     }
 
@@ -95,6 +95,7 @@ public class VaultServiceRolesInstaller {
                 final var keyName = keyNameSupplier.get();
 
                 createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
+                LOGGER.debug("Vault identity key: {}", keyName);
 
                 for (var role : serviceRoles.roles) {
                   final var roleName = roleNameBuilder.apply(role.role);
@@ -103,9 +104,10 @@ public class VaultServiceRolesInstaller {
                       keyName,
                       role.role,
                       role.permissions);
+                  LOGGER.debug("Vault identity role: {}", roleName);
                 }
 
-                LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
+                LOGGER.debug("Installed service roles: {}", serviceRoles);
               })
           .get(timeout, timeUnit);
     } catch (Exception e) {
@@ -114,10 +116,6 @@ public class VaultServiceRolesInstaller {
   }
 
   private ServiceRoles loadServiceRoles() {
-    if (serviceRolesSources == null) {
-      return null;
-    }
-
     for (Supplier<ServiceRoles> serviceRolesSource : serviceRolesSources) {
       final ServiceRoles serviceRoles = serviceRolesSource.get();
       if (serviceRoles != null) {
@@ -146,7 +144,6 @@ public class VaultServiceRolesInstaller {
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
-      LOGGER.debug("Created vault identity key: {}", keyName);
     } catch (RestException e) {
       throw new RuntimeException("Failed to create vault identity key: " + keyName, e);
     }
@@ -164,7 +161,6 @@ public class VaultServiceRolesInstaller {
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
-      LOGGER.debug("Created vault identity role: {}", roleName);
     } catch (RestException e) {
       throw new RuntimeException("Failed to create vault identity role: " + roleName, e);
     }
