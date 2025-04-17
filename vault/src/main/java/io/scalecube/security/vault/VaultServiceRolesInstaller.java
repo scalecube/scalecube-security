@@ -12,6 +12,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -49,17 +50,24 @@ public class VaultServiceRolesInstaller {
   private final TimeUnit timeUnit;
 
   private VaultServiceRolesInstaller(Builder builder) {
-    this.vaultAddress = builder.vaultAddress;
-    this.vaultTokenSupplier = builder.vaultTokenSupplier;
-    this.keyNameSupplier = builder.keyNameSupplier;
-    this.roleNameBuilder = builder.roleNameBuilder;
-    this.serviceRolesSources = builder.serviceRolesSources;
-    this.keyAlgorithm = builder.keyAlgorithm;
-    this.keyRotationPeriod = builder.keyRotationPeriod;
-    this.keyVerificationTtl = builder.keyVerificationTtl;
-    this.roleTtl = builder.roleTtl;
+    this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
+    this.vaultTokenSupplier =
+        Objects.requireNonNull(builder.vaultTokenSupplier, "vaultTokenSupplier");
+    this.keyNameSupplier = Objects.requireNonNull(builder.keyNameSupplier, "keyNameSupplier");
+    this.roleNameBuilder = Objects.requireNonNull(builder.roleNameBuilder, "roleNameBuilder");
+    this.serviceRolesSources =
+        Objects.requireNonNull(builder.serviceRolesSources, "serviceRolesSources");
+    this.keyAlgorithm = Objects.requireNonNull(builder.keyAlgorithm, "keyAlgorithm");
+    this.keyRotationPeriod = Objects.requireNonNull(builder.keyRotationPeriod, "keyRotationPeriod");
+    this.keyVerificationTtl =
+        Objects.requireNonNull(builder.keyVerificationTtl, "keyVerificationTtl");
+    this.roleTtl = Objects.requireNonNull(builder.roleTtl, "roleTtl");
     this.timeout = builder.timeout;
     this.timeUnit = builder.timeUnit;
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   /**
@@ -68,13 +76,13 @@ public class VaultServiceRolesInstaller {
    */
   public void install() {
     if (isNullOrNoneOrEmpty(vaultAddress)) {
-      LOGGER.debug("Skipping serviceRoles installation, vaultAddress not set");
+      LOGGER.debug("Skipping service roles installation, vault address not set");
       return;
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
     if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
-      LOGGER.debug("Skipping serviceRoles installation, serviceRoles not set");
+      LOGGER.debug("Skipping service roles installation, service roles not set");
       return;
     }
 
@@ -87,17 +95,19 @@ public class VaultServiceRolesInstaller {
                 final var keyName = keyNameSupplier.get();
 
                 createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
+                LOGGER.debug("Vault identity key: {}", keyName);
 
                 for (var role : serviceRoles.roles) {
-                  String roleName = roleNameBuilder.apply(role.role);
+                  final var roleName = roleNameBuilder.apply(role.role);
                   createVaultIdentityRole(
                       rest.url(vaultIdentityRoleUri(roleName)),
                       keyName,
-                      roleName,
+                      role.role,
                       role.permissions);
+                  LOGGER.debug("Vault identity role: {}", roleName);
                 }
 
-                LOGGER.debug("Installed serviceRoles ({})", serviceRoles);
+                LOGGER.debug("Installed service roles: {}", serviceRoles);
               })
           .get(timeout, timeUnit);
     } catch (Exception e) {
@@ -106,10 +116,6 @@ public class VaultServiceRolesInstaller {
   }
 
   private ServiceRoles loadServiceRoles() {
-    if (serviceRolesSources == null) {
-      return null;
-    }
-
     for (Supplier<ServiceRoles> serviceRolesSource : serviceRolesSources) {
       final ServiceRoles serviceRoles = serviceRolesSource.get();
       if (serviceRoles != null) {
@@ -134,11 +140,10 @@ public class VaultServiceRolesInstaller {
             .add("allowed_client_ids", "*")
             .add("algorithm", keyAlgorithm)
             .toString()
-            .getBytes();
+            .getBytes(StandardCharsets.UTF_8);
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
-      LOGGER.debug("Created vault identity key: {}", keyName);
     } catch (RestException e) {
       throw new RuntimeException("Failed to create vault identity key: " + keyName, e);
     }
@@ -149,23 +154,26 @@ public class VaultServiceRolesInstaller {
     final byte[] body =
         Json.object()
             .add("key", keyName)
-            .add("template", createTemplate(permissions))
+            .add("template", createTemplate(roleName, permissions))
             .add("ttl", roleTtl)
             .toString()
-            .getBytes();
+            .getBytes(StandardCharsets.UTF_8);
 
     try {
       awaitSuccess(rest.body(body).post().getStatus());
-      LOGGER.debug("Created vault identity role: {}", roleName);
     } catch (RestException e) {
       throw new RuntimeException("Failed to create vault identity role: " + roleName, e);
     }
   }
 
-  private static String createTemplate(List<String> permissions) {
+  private static String createTemplate(String roleName, List<String> permissions) {
     return Base64.getUrlEncoder()
         .encodeToString(
-            Json.object().add("permissions", String.join(",", permissions)).toString().getBytes());
+            Json.object()
+                .add("role", roleName)
+                .add("permissions", String.join(",", permissions))
+                .toString()
+                .getBytes(StandardCharsets.UTF_8));
   }
 
   private String vaultIdentityKeyUri(String keyName) {
@@ -363,7 +371,7 @@ public class VaultServiceRolesInstaller {
     private long timeout = 10;
     private TimeUnit timeUnit = TimeUnit.SECONDS;
 
-    public Builder() {}
+    private Builder() {}
 
     public Builder vaultAddress(String vaultAddress) {
       this.vaultAddress = vaultAddress;

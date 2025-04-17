@@ -30,7 +30,7 @@ public class VaultServiceTokenTests {
   void testGetServiceTokenUsingWrongCredentials(VaultEnvironment vaultEnvironment)
       throws Exception {
     final var serviceTokenSupplier =
-        new VaultServiceTokenSupplier.Builder()
+        VaultServiceTokenSupplier.builder()
             .vaultAddress(vaultEnvironment.vaultAddr())
             .vaultTokenSupplier(() -> completedFuture(randomAlphabetic(16)))
             .serviceRole(randomAlphabetic(16))
@@ -52,7 +52,7 @@ public class VaultServiceTokenTests {
     final var nonExistingServiceRole = "non-existing-role-" + System.currentTimeMillis();
 
     final var serviceTokenSupplier =
-        new VaultServiceTokenSupplier.Builder()
+        VaultServiceTokenSupplier.builder()
             .vaultAddress(vaultEnvironment.vaultAddr())
             .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
             .serviceRole(nonExistingServiceRole)
@@ -76,7 +76,7 @@ public class VaultServiceTokenTests {
     final var serviceRole2 = "role2-" + now;
     final var serviceRole3 = "role3-" + now;
 
-    new VaultServiceRolesInstaller.Builder()
+    VaultServiceRolesInstaller.builder()
         .vaultAddress(vaultEnvironment.vaultAddr())
         .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
         .keyNameSupplier(() -> "key-" + now)
@@ -94,7 +94,7 @@ public class VaultServiceTokenTests {
         .install();
 
     final var serviceTokenSupplier =
-        new VaultServiceTokenSupplier.Builder()
+        VaultServiceTokenSupplier.builder()
             .vaultAddress(vaultEnvironment.vaultAddr())
             .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
             .serviceRole(serviceRole1)
@@ -117,7 +117,7 @@ public class VaultServiceTokenTests {
     final var serviceRole = "role-" + now;
     final var tags = Map.of("type", "ops", "ns", "develop");
 
-    new VaultServiceRolesInstaller.Builder()
+    VaultServiceRolesInstaller.builder()
         .vaultAddress(vaultEnvironment.vaultAddr())
         .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
         .keyNameSupplier(() -> "key-" + now)
@@ -128,7 +128,7 @@ public class VaultServiceTokenTests {
         .install();
 
     final var serviceTokenSupplier =
-        new VaultServiceTokenSupplier.Builder()
+        VaultServiceTokenSupplier.builder()
             .vaultAddress(vaultEnvironment.vaultAddr())
             .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
             .serviceRole(serviceRole)
@@ -142,7 +142,7 @@ public class VaultServiceTokenTests {
 
     final var jwtToken =
         new JsonwebtokenResolver(
-                new JwksKeyLocator.Builder().jwksUri(vaultEnvironment.jwksUri()).build())
+                JwksKeyLocator.builder().jwksUri(vaultEnvironment.jwksUri()).build())
             .resolve(serviceToken)
             .get(3, TimeUnit.SECONDS);
 

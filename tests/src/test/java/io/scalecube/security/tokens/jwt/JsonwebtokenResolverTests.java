@@ -29,7 +29,7 @@ public class JsonwebtokenResolverTests {
 
     final var jwtToken =
         new JsonwebtokenResolver(
-                new JwksKeyLocator.Builder()
+                JwksKeyLocator.builder()
                     .jwksUri(vaultEnvironment.jwksUri())
                     .connectTimeout(Duration.ofSeconds(3))
                     .requestTimeout(Duration.ofSeconds(3))
