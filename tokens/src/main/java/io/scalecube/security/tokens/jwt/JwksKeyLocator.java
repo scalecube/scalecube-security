@@ -168,8 +168,8 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     private Builder() {}
 
     /**
-     * Setter for JWKS URI. The JWKS URI typically follows a well-known pattern, such as
-     * https://server_domain/.well-known/jwks.json. This endpoint is a read-only URL that responds
+     * Setter for JWKS URI. The JWKS URI typically follows a well-known pattern, such as {@code
+     * https://server_domain/.well-known/jwks.json}. This endpoint is a read-only URL that responds
      * to GET requests by returning the JWKS in JSON format.
      *
      * @param jwksUri jwksUri
