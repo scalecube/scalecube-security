@@ -37,6 +37,7 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
   private final Duration connectTimeout;
   private final Duration requestTimeout;
   private final int keyTtl;
+  private final HttpClient httpClient;
 
   private final Map<String, CachedKey> keyResolutions = new ConcurrentHashMap<>();
   private final ReentrantLock cleanupLock = new ReentrantLock();
@@ -46,6 +47,7 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     this.connectTimeout = Objects.requireNonNull(builder.connectTimeout, "connectTimeout");
     this.requestTimeout = Objects.requireNonNull(builder.requestTimeout, "requestTimeout");
     this.keyTtl = builder.keyTtl;
+    this.httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
   }
 
   public static Builder builder() {
@@ -75,12 +77,9 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     final HttpResponse<InputStream> httpResponse;
     try {
       httpResponse =
-          HttpClient.newBuilder()
-              .connectTimeout(connectTimeout)
-              .build()
-              .send(
-                  HttpRequest.newBuilder(jwksUri).GET().timeout(requestTimeout).build(),
-                  BodyHandlers.ofInputStream());
+          httpClient.send(
+              HttpRequest.newBuilder(jwksUri).GET().timeout(requestTimeout).build(),
+              BodyHandlers.ofInputStream());
     } catch (HttpTimeoutException e) {
       throw new JwtUnavailableException("Failed to retrive jwk keys", e);
     } catch (IOException e) {
