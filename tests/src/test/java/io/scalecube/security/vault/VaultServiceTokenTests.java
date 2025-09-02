@@ -143,7 +143,7 @@ public class VaultServiceTokenTests {
     final var jwtToken =
         new JsonwebtokenResolver(
                 JwksKeyLocator.builder().jwksUri(vaultEnvironment.jwksUri()).build())
-            .resolve(serviceToken)
+            .resolveToken(serviceToken)
             .get(3, TimeUnit.SECONDS);
 
     assertNotNull(jwtToken, "jwtToken");

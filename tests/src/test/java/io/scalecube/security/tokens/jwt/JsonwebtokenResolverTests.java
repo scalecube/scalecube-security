@@ -24,7 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class JsonwebtokenResolverTests {
 
   @Test
-  void testResolveTokenSuccessfully(VaultEnvironment vaultEnvironment) throws Exception {
+  void testResolveTokenTokenSuccessfully(VaultEnvironment vaultEnvironment) throws Exception {
     final var token = vaultEnvironment.newServiceToken();
 
     final var jwtToken =
@@ -35,7 +35,7 @@ public class JsonwebtokenResolverTests {
                     .requestTimeout(Duration.ofSeconds(3))
                     .keyTtl(1000)
                     .build())
-            .resolve(token)
+            .resolveToken(token)
             .get(3, TimeUnit.SECONDS);
 
     assertNotNull(jwtToken, "jwtToken");
@@ -47,15 +47,7 @@ public class JsonwebtokenResolverTests {
   void testParseTokenSuccessfully(VaultEnvironment vaultEnvironment) {
     final var token = vaultEnvironment.newServiceToken();
 
-    final var jwtToken =
-        new JsonwebtokenResolver(
-                JwksKeyLocator.builder()
-                    .jwksUri(vaultEnvironment.jwksUri())
-                    .connectTimeout(Duration.ofSeconds(3))
-                    .requestTimeout(Duration.ofSeconds(3))
-                    .keyTtl(1000)
-                    .build())
-            .parse(token);
+    final var jwtToken = JwtToken.parseToken(token);
 
     assertNotNull(jwtToken, "jwtToken");
     assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
@@ -70,7 +62,7 @@ public class JsonwebtokenResolverTests {
     when(keyLocator.locate(any())).thenThrow(new RuntimeException("Cannot get key"));
 
     try {
-      new JsonwebtokenResolver(keyLocator).resolve(token).get(3, TimeUnit.SECONDS);
+      new JsonwebtokenResolver(keyLocator).resolveToken(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
@@ -87,7 +79,7 @@ public class JsonwebtokenResolverTests {
     when(keyLocator.locate(any())).thenThrow(new JwtUnavailableException("JWKS timeout"));
 
     try {
-      new JsonwebtokenResolver(keyLocator).resolve(token).get(3, TimeUnit.SECONDS);
+      new JsonwebtokenResolver(keyLocator).resolveToken(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
