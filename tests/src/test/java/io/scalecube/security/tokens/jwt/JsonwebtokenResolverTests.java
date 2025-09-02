@@ -44,6 +44,25 @@ public class JsonwebtokenResolverTests {
   }
 
   @Test
+  void testParseTokenSuccessfully(VaultEnvironment vaultEnvironment) {
+    final var token = vaultEnvironment.newServiceToken();
+
+    final var jwtToken =
+        new JsonwebtokenResolver(
+                JwksKeyLocator.builder()
+                    .jwksUri(vaultEnvironment.jwksUri())
+                    .connectTimeout(Duration.ofSeconds(3))
+                    .requestTimeout(Duration.ofSeconds(3))
+                    .keyTtl(1000)
+                    .build())
+            .parse(token);
+
+    assertNotNull(jwtToken, "jwtToken");
+    assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
+    assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
+  }
+
+  @Test
   void testJwksKeyLocatorThrowsError(VaultEnvironment vaultEnvironment) {
     final var token = vaultEnvironment.newServiceToken();
 

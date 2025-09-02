@@ -5,10 +5,18 @@ import java.util.concurrent.CompletableFuture;
 public interface JwtTokenResolver {
 
   /**
-   * Verifies and returns token claims.
+   * Verifies given JWT and parses its header and claims.
    *
    * @param token jwt token
-   * @return mono result with parsed claims (or error)
+   * @return async result with {@link JwtToken}, or error
    */
   CompletableFuture<JwtToken> resolve(String token);
+
+  /**
+   * Parses given JWT without verifying its signature.
+   *
+   * @param token jwt token
+   * @return parsed token
+   */
+  JwtToken parse(String token);
 }
