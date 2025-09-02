@@ -10,5 +10,5 @@ public interface JwtTokenResolver {
    * @param token jwt token
    * @return async result with {@link JwtToken}, or error
    */
-  CompletableFuture<JwtToken> resolve(String token);
+  CompletableFuture<JwtToken> resolveToken(String token);
 }

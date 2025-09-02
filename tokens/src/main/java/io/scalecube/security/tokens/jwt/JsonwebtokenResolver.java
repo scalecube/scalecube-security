@@ -19,7 +19,7 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
   }
 
   @Override
-  public CompletableFuture<JwtToken> resolve(String token) {
+  public CompletableFuture<JwtToken> resolveToken(String token) {
     return CompletableFuture.supplyAsync(
             () -> {
               final var claimsJws =

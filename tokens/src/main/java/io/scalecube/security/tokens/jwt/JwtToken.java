@@ -14,7 +14,7 @@ public record JwtToken(Map<String, Object> header, Map<String, Object> payload) 
    * @param token jwt token
    * @return parsed token
    */
-  public static JwtToken parse(String token) {
+  public static JwtToken parseToken(String token) {
     String[] parts = token.split("\\.");
     if (parts.length != 3) {
       throw new JwtTokenException("Invalid JWT format");
