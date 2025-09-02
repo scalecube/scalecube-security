@@ -1,8 +1,13 @@
 package io.scalecube.security.tokens.jwt;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Locator;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.Base64;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
@@ -30,7 +35,7 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
             (jwtToken, ex) -> {
               if (jwtToken != null) {
                 if (LOGGER.isDebugEnabled()) {
-                  LOGGER.debug("Resolved token: {}", mask(token));
+                  LOGGER.debug("Resolved JWT: {}", mask(token));
                 }
                 return jwtToken;
               }
@@ -38,11 +43,34 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
                 if (ex instanceof JwtTokenException) {
                   throw (JwtTokenException) ex;
                 } else {
-                  throw new JwtTokenException("Failed to resolve token: " + mask(token), ex);
+                  throw new JwtTokenException("Failed to resolve JWT: " + mask(token), ex);
                 }
               }
               return null;
             });
+  }
+
+  @Override
+  public JwtToken parse(String token) {
+    String[] parts = token.split("\\.");
+    if (parts.length != 3) {
+      throw new JwtTokenException("Invalid JWT format");
+    }
+
+    try {
+      final var urlDecoder = Base64.getUrlDecoder();
+      final var headerJson = new String(urlDecoder.decode(parts[0]), StandardCharsets.UTF_8);
+      final var payloadJson = new String(urlDecoder.decode(parts[1]), StandardCharsets.UTF_8);
+
+      final var mapper = new ObjectMapper();
+      final var header = mapper.readValue(headerJson, Map.class);
+      final var claims = mapper.readValue(payloadJson, Map.class);
+
+      //noinspection unchecked
+      return new JwtToken(header, claims);
+    } catch (IOException e) {
+      throw new JwtTokenException("Failed to decode JWT", e);
+    }
   }
 
   private static String mask(String data) {
