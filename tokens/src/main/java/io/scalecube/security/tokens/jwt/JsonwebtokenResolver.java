@@ -1,9 +1,9 @@
 package io.scalecube.security.tokens.jwt;
 
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Locator;
 import java.security.Key;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,18 +12,17 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonwebtokenResolver.class);
 
-  private final Locator<Key> keyLocator;
+  private final JwtParser jwtParser;
 
   public JsonwebtokenResolver(Locator<Key> keyLocator) {
-    this.keyLocator = Objects.requireNonNull(keyLocator, "keyLocator");
+    jwtParser = Jwts.parser().keyLocator(keyLocator).build();
   }
 
   @Override
   public CompletableFuture<JwtToken> resolveToken(String token) {
     return CompletableFuture.supplyAsync(
             () -> {
-              final var claimsJws =
-                  Jwts.parser().keyLocator(keyLocator).build().parseSignedClaims(token);
+              final var claimsJws = jwtParser.parseSignedClaims(token);
               return new JwtToken(claimsJws.getHeader(), claimsJws.getPayload());
             })
         .handle(
