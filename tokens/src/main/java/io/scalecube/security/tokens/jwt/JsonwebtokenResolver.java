@@ -1,9 +1,8 @@
 package io.scalecube.security.tokens.jwt;
 
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.Locator;
-import java.security.Key;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import java.security.interfaces.RSAPublicKey;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,18 +11,22 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonwebtokenResolver.class);
 
-  private final JwtParser jwtParser;
+  private final JwksKeyLocator keyLocator;
 
-  public JsonwebtokenResolver(Locator<Key> keyLocator) {
-    jwtParser = Jwts.parser().keyLocator(keyLocator).build();
+  public JsonwebtokenResolver(JwksKeyLocator keyLocator) {
+    this.keyLocator = keyLocator;
   }
 
   @Override
   public CompletableFuture<JwtToken> resolveToken(String token) {
     return CompletableFuture.supplyAsync(
             () -> {
-              final var claimsJws = jwtParser.parseSignedClaims(token);
-              return new JwtToken(claimsJws.getHeader(), claimsJws.getPayload());
+              final var rawToken = JWT.decode(token);
+              final var kid = rawToken.getKeyId();
+              final var publicKey = (RSAPublicKey) keyLocator.locate(kid);
+              final var verifier = JWT.require(Algorithm.RSA256(publicKey, null)).build();
+              verifier.verify(token);
+              return JwtToken.parseToken(token);
             })
         .handle(
             (jwtToken, ex) -> {

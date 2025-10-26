@@ -6,8 +6,6 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import io.jsonwebtoken.JwsHeader;
-import io.jsonwebtoken.LocatorAdapter;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +27,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class JwksKeyLocator extends LocatorAdapter<Key> {
+public class JwksKeyLocator {
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -54,16 +52,15 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     return new Builder();
   }
 
-  @Override
-  protected Key locate(JwsHeader header) {
+  public Key locate(String kid) {
     try {
       return keyResolutions
           .computeIfAbsent(
-              header.getKeyId(),
-              kid -> {
-                final var key = findKeyById(computeKeyList(), kid);
+              kid,
+              id -> {
+                final var key = findKeyById(computeKeyList(), id);
                 if (key == null) {
-                  throw new JwtUnavailableException("Cannot find key by kid: " + kid);
+                  throw new JwtUnavailableException("Cannot find key by kid: " + id);
                 }
                 return new CachedKey(key, System.currentTimeMillis() + keyTtl);
               })

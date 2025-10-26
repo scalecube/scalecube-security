@@ -11,10 +11,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.jsonwebtoken.Locator;
 import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
-import java.security.Key;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
@@ -58,7 +56,7 @@ public class JsonwebtokenResolverTests {
   void testJwksKeyLocatorThrowsError(VaultEnvironment vaultEnvironment) {
     final var token = vaultEnvironment.newServiceToken();
 
-    Locator<Key> keyLocator = mock(Locator.class);
+    final var keyLocator = mock(JwksKeyLocator.class);
     when(keyLocator.locate(any())).thenThrow(new RuntimeException("Cannot get key"));
 
     try {
@@ -75,7 +73,7 @@ public class JsonwebtokenResolverTests {
   void testJwksKeyLocatorThrowsRetryableError(VaultEnvironment vaultEnvironment) {
     final var token = vaultEnvironment.newServiceToken();
 
-    Locator<Key> keyLocator = mock(Locator.class);
+    final var keyLocator = mock(JwksKeyLocator.class);
     when(keyLocator.locate(any())).thenThrow(new JwtUnavailableException("JWKS timeout"));
 
     try {
