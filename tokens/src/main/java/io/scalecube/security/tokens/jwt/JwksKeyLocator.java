@@ -45,7 +45,10 @@ public class JwksKeyLocator {
     this.connectTimeout = Objects.requireNonNull(builder.connectTimeout, "connectTimeout");
     this.requestTimeout = Objects.requireNonNull(builder.requestTimeout, "requestTimeout");
     this.keyTtl = builder.keyTtl;
-    this.httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+    this.httpClient =
+        builder.httpClient != null
+            ? builder.httpClient
+            : HttpClient.newBuilder().connectTimeout(connectTimeout).build();
   }
 
   public static Builder builder() {
@@ -160,6 +163,7 @@ public class JwksKeyLocator {
     private Duration connectTimeout = Duration.ofSeconds(10);
     private Duration requestTimeout = Duration.ofSeconds(10);
     private int keyTtl = 60 * 1000;
+    private HttpClient httpClient;
 
     private Builder() {}
 
@@ -208,6 +212,17 @@ public class JwksKeyLocator {
      */
     public Builder keyTtl(int keyTtl) {
       this.keyTtl = keyTtl;
+      return this;
+    }
+
+    /**
+     * Setter for optional {@link HttpClient}.
+     *
+     * @param httpClient httpClient
+     * @return this
+     */
+    public Builder httpClient(HttpClient httpClient) {
+      this.httpClient = httpClient;
       return this;
     }
 
