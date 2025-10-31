@@ -14,7 +14,7 @@
   <dependencies>
     <dependency>
       <groupId>io.scalecube</groupId>
-      <artifactId>scalecube-security-tokens</artifactId>
+      <artifactId>scalecube-security-jwt</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>

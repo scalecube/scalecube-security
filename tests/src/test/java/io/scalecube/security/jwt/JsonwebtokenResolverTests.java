@@ -1,4 +1,4 @@
-package io.scalecube.security.tokens.jwt;
+package io.scalecube.security.jwt;
 
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static org.hamcrest.CoreMatchers.instanceOf;

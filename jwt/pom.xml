@@ -10,7 +10,7 @@
     <version>1.1.8-SNAPSHOT</version>
   </parent>
 
-  <artifactId>scalecube-security-tokens</artifactId>
+  <artifactId>scalecube-security-jwt</artifactId>
   <name>${project.artifactId}</name>
 
   <dependencies>

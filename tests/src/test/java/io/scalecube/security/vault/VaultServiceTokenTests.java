@@ -11,8 +11,8 @@ import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUti
 
 import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
-import io.scalecube.security.tokens.jwt.JsonwebtokenResolver;
-import io.scalecube.security.tokens.jwt.JwksKeyLocator;
+import io.scalecube.security.jwt.JsonwebtokenResolver;
+import io.scalecube.security.jwt.JwksKeyLocator;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
 import java.util.Collections;
