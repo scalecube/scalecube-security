@@ -1,8 +1,11 @@
 package io.scalecube.security.jwt;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import java.security.interfaces.RSAPublicKey;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwt;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.LocatorAdapter;
+import io.jsonwebtoken.ProtectedHeader;
+import java.security.Key;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,12 +28,28 @@ public class JwksTokenResolver implements JwtTokenResolver {
   public CompletableFuture<JwtToken> resolveToken(String token) {
     return CompletableFuture.supplyAsync(
             () -> {
-              final var rawToken = JWT.decode(token);
-              final var kid = rawToken.getKeyId();
-              final var publicKey = (RSAPublicKey) keyProvider.getKey(kid);
-              final var verifier = JWT.require(Algorithm.RSA256(publicKey, null)).build();
-              verifier.verify(token);
-              return JwtToken.parseToken(token);
+              final Jwt<?, ?> parse =
+                  Jwts.parser()
+                      .keyLocator(
+                          new LocatorAdapter<>() {
+                            @Override
+                            protected Key locate(ProtectedHeader header) {
+                              final var keyId = header.getKeyId();
+                              return keyProvider.getKey(keyId);
+                            }
+                          })
+                      .build()
+                      .parse(token);
+
+              parse.getHeader();
+
+              // final var rawToken = JWT.decode(token);
+              // final var kid = rawToken.getKeyId();
+              // final var publicKey = (RSAPublicKey) keyProvider.getKey(kid);
+              // final var verifier = JWT.require(Algorithm.RSA256(publicKey, null)).build();
+              // verifier.verify(token);
+
+              return new JwtToken(parse.getHeader(), (Claims) parse.getPayload());
             })
         .handle(
             (jwtToken, ex) -> {

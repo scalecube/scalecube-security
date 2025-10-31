@@ -44,7 +44,7 @@
     <vault-java-driver.version>5.1.0</vault-java-driver.version>
     <jackson.version>2.19.2</jackson.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <auth0.java-jwt.version>4.5.0</auth0.java-jwt.version>
+    <jjwt.version>0.13.0</jjwt.version>
 
     <mockito-junit.version>5.20.0</mockito-junit.version>
     <mockito-inline.version>5.2.0</mockito-inline.version>
@@ -72,11 +72,13 @@
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-      <!-- Auth0/JWT -->
+      <!-- Jsonwebtoken -->
       <dependency>
-        <groupId>com.auth0</groupId>
-        <artifactId>java-jwt</artifactId>
-        <version>${auth0.java-jwt.version}</version>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-bom</artifactId>
+        <version>${jjwt.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <!-- Jackson -->
       <dependency>
