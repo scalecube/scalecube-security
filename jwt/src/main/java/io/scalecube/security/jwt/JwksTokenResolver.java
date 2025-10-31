@@ -7,14 +7,18 @@ import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JsonwebtokenResolver implements JwtTokenResolver {
+/**
+ * Resolves and verifies JWT tokens using public keys provided by {@link JwksKeyProvider}. Tokens
+ * are validated asynchronously and parsed into {@link JwtToken} instances.
+ */
+public class JwksTokenResolver implements JwtTokenResolver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JsonwebtokenResolver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(JwksTokenResolver.class);
 
-  private final JwksKeyLocator keyLocator;
+  private final JwksKeyProvider keyProvider;
 
-  public JsonwebtokenResolver(JwksKeyLocator keyLocator) {
-    this.keyLocator = keyLocator;
+  public JwksTokenResolver(JwksKeyProvider keyProvider) {
+    this.keyProvider = keyProvider;
   }
 
   @Override
@@ -23,7 +27,7 @@ public class JsonwebtokenResolver implements JwtTokenResolver {
             () -> {
               final var rawToken = JWT.decode(token);
               final var kid = rawToken.getKeyId();
-              final var publicKey = (RSAPublicKey) keyLocator.locate(kid);
+              final var publicKey = (RSAPublicKey) keyProvider.getKey(kid);
               final var verifier = JWT.require(Algorithm.RSA256(publicKey, null)).build();
               verifier.verify(token);
               return JwtToken.parseToken(token);

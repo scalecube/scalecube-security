@@ -27,7 +27,11 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class JwksKeyLocator {
+/**
+ * Provides public keys from a remote JWKS endpoint and caches them temporarily. Keys are fetched on
+ * demand by their {@code kid} and automatically removed when expired.
+ */
+public class JwksKeyProvider {
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -40,7 +44,7 @@ public class JwksKeyLocator {
   private final Map<String, CachedKey> keyResolutions = new ConcurrentHashMap<>();
   private final ReentrantLock cleanupLock = new ReentrantLock();
 
-  private JwksKeyLocator(Builder builder) {
+  private JwksKeyProvider(Builder builder) {
     this.jwksUri = Objects.requireNonNull(builder.jwksUri, "jwksUri");
     this.connectTimeout = Objects.requireNonNull(builder.connectTimeout, "connectTimeout");
     this.requestTimeout = Objects.requireNonNull(builder.requestTimeout, "requestTimeout");
@@ -55,7 +59,15 @@ public class JwksKeyLocator {
     return new Builder();
   }
 
-  public Key locate(String kid) {
+  /**
+   * Returns the public key for the given {@code kid}. If not cached, the key is fetched from the
+   * JWKS endpoint and cached for future use.
+   *
+   * @param kid key id of the public key to retrieve
+   * @return {@link Key} object associated with given {@code kid}
+   * @throws JwtUnavailableException if key cannot be found or JWKS cannot be retrieved
+   */
+  public Key getKey(String kid) {
     try {
       return keyResolutions
           .computeIfAbsent(
@@ -226,8 +238,8 @@ public class JwksKeyLocator {
       return this;
     }
 
-    public JwksKeyLocator build() {
-      return new JwksKeyLocator(this);
+    public JwksKeyProvider build() {
+      return new JwksKeyProvider(this);
     }
   }
 }
