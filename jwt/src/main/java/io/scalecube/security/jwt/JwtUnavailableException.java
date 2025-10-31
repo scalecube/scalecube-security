@@ -1,4 +1,4 @@
-package io.scalecube.security.tokens.jwt;
+package io.scalecube.security.jwt;
 
 /**
  * Special JWT exception type indicating transient error during token resolution. For example such

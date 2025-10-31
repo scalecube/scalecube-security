@@ -1,4 +1,4 @@
-package io.scalecube.security.tokens.jwt;
+package io.scalecube.security.jwt;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -6,8 +6,6 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import io.jsonwebtoken.JwsHeader;
-import io.jsonwebtoken.LocatorAdapter;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +27,11 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class JwksKeyLocator extends LocatorAdapter<Key> {
+/**
+ * Provides public keys from a remote JWKS endpoint and caches them temporarily. Keys are fetched on
+ * demand by their {@code kid} and automatically removed when expired.
+ */
+public class JwksKeyProvider {
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -42,28 +44,38 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
   private final Map<String, CachedKey> keyResolutions = new ConcurrentHashMap<>();
   private final ReentrantLock cleanupLock = new ReentrantLock();
 
-  private JwksKeyLocator(Builder builder) {
+  private JwksKeyProvider(Builder builder) {
     this.jwksUri = Objects.requireNonNull(builder.jwksUri, "jwksUri");
     this.connectTimeout = Objects.requireNonNull(builder.connectTimeout, "connectTimeout");
     this.requestTimeout = Objects.requireNonNull(builder.requestTimeout, "requestTimeout");
     this.keyTtl = builder.keyTtl;
-    this.httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+    this.httpClient =
+        builder.httpClient != null
+            ? builder.httpClient
+            : HttpClient.newBuilder().connectTimeout(connectTimeout).build();
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  @Override
-  protected Key locate(JwsHeader header) {
+  /**
+   * Returns the public key for the given {@code kid}. If not cached, the key is fetched from the
+   * JWKS endpoint and cached for future use.
+   *
+   * @param kid key id of the public key to retrieve
+   * @return {@link Key} object associated with given {@code kid}
+   * @throws JwtUnavailableException if key cannot be found or JWKS cannot be retrieved
+   */
+  public Key getKey(String kid) {
     try {
       return keyResolutions
           .computeIfAbsent(
-              header.getKeyId(),
-              kid -> {
-                final var key = findKeyById(computeKeyList(), kid);
+              kid,
+              id -> {
+                final var key = findKeyById(computeKeyList(), id);
                 if (key == null) {
-                  throw new JwtUnavailableException("Cannot find key by kid: " + kid);
+                  throw new JwtUnavailableException("Cannot find key by kid: " + id);
                 }
                 return new CachedKey(key, System.currentTimeMillis() + keyTtl);
               })
@@ -163,6 +175,7 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
     private Duration connectTimeout = Duration.ofSeconds(10);
     private Duration requestTimeout = Duration.ofSeconds(10);
     private int keyTtl = 60 * 1000;
+    private HttpClient httpClient;
 
     private Builder() {}
 
@@ -214,8 +227,19 @@ public class JwksKeyLocator extends LocatorAdapter<Key> {
       return this;
     }
 
-    public JwksKeyLocator build() {
-      return new JwksKeyLocator(this);
+    /**
+     * Setter for optional {@link HttpClient}.
+     *
+     * @param httpClient httpClient
+     * @return this
+     */
+    public Builder httpClient(HttpClient httpClient) {
+      this.httpClient = httpClient;
+      return this;
+    }
+
+    public JwksKeyProvider build() {
+      return new JwksKeyProvider(this);
     }
   }
 }

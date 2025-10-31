@@ -1,4 +1,4 @@
-package io.scalecube.security.tokens.jwt;
+package io.scalecube.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -6,13 +6,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 
+/**
+ * Represents parsed JWT (JSON Web Token), including its header and payload claims.
+ *
+ * @param header JWT header as map of key-value pairs
+ * @param payload JWT payload (claims) as map of key-value pairs
+ */
 public record JwtToken(Map<String, Object> header, Map<String, Object> payload) {
 
   /**
    * Parses given JWT without verifying its signature.
    *
    * @param token jwt token
-   * @return parsed token
+   * @return {@link JwtToken} object, or {@link JwtTokenException} will be thrown
    */
   public static JwtToken parseToken(String token) {
     String[] parts = token.split("\\.");

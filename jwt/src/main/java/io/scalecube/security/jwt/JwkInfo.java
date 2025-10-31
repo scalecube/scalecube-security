@@ -1,4 +1,4 @@
-package io.scalecube.security.tokens.jwt;
+package io.scalecube.security.jwt;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.StringJoiner;
