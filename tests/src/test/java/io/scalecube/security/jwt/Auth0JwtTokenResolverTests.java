@@ -19,14 +19,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(IntegrationEnvironmentFixture.class)
-public class JwksTokenResolverTests {
+public class Auth0JwtTokenResolverTests {
 
   @Test
   void testResolveTokenTokenSuccessfully(VaultEnvironment vaultEnvironment) throws Exception {
     final var token = vaultEnvironment.newServiceToken();
 
     final var jwtToken =
-        new JwksTokenResolver(
+        new Auth0JwtTokenResolver(
                 JwksKeyProvider.builder()
                     .jwksUri(vaultEnvironment.jwksUri())
                     .connectTimeout(Duration.ofSeconds(3))
@@ -60,7 +60,7 @@ public class JwksTokenResolverTests {
     when(keyProvider.getKey(any())).thenThrow(new RuntimeException("Cannot get key"));
 
     try {
-      new JwksTokenResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
+      new Auth0JwtTokenResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
@@ -77,7 +77,7 @@ public class JwksTokenResolverTests {
     when(keyProvider.getKey(any())).thenThrow(new JwtUnavailableException("JWKS timeout"));
 
     try {
-      new JwksTokenResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
+      new Auth0JwtTokenResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);

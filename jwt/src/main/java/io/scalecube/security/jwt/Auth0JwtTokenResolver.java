@@ -11,13 +11,13 @@ import org.slf4j.LoggerFactory;
  * Resolves and verifies JWT tokens using public keys provided by {@link JwksKeyProvider}. Tokens
  * are validated asynchronously and parsed into {@link JwtToken} instances.
  */
-public class JwksTokenResolver implements JwtTokenResolver {
+public class Auth0JwtTokenResolver implements JwtTokenResolver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JwksTokenResolver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Auth0JwtTokenResolver.class);
 
   private final JwksKeyProvider keyProvider;
 
-  public JwksTokenResolver(JwksKeyProvider keyProvider) {
+  public Auth0JwtTokenResolver(JwksKeyProvider keyProvider) {
     this.keyProvider = keyProvider;
   }
 

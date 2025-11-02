@@ -11,8 +11,8 @@ import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUti
 
 import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
+import io.scalecube.security.jwt.Auth0JwtTokenResolver;
 import io.scalecube.security.jwt.JwksKeyProvider;
-import io.scalecube.security.jwt.JwksTokenResolver;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles;
 import io.scalecube.security.vault.VaultServiceRolesInstaller.ServiceRoles.Role;
 import java.util.Collections;
@@ -141,7 +141,7 @@ public class VaultServiceTokenTests {
     // Verify serviceToken
 
     final var jwtToken =
-        new JwksTokenResolver(JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
+        new Auth0JwtTokenResolver(JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
             .resolveToken(serviceToken)
             .get(3, TimeUnit.SECONDS);
 
