@@ -1,7 +1,6 @@
 package io.scalecube.security.environment;
 
-import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
-import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
@@ -92,8 +91,8 @@ public class VaultEnvironment implements AutoCloseable {
 
   public String login() {
     try {
-      String username = randomAlphabetic(5);
-      String policy = randomAlphanumeric(10);
+      String username = secure().nextAlphabetic(5);
+      String policy = secure().nextAlphabetic(10);
 
       // add policy
       createIdentityTokenPolicy(policy);
@@ -131,7 +130,7 @@ public class VaultEnvironment implements AutoCloseable {
   }
 
   public String createIdentityKey() {
-    String keyName = randomAlphanumeric(10);
+    String keyName = secure().nextAlphabetic(10);
 
     int status;
     try {
@@ -162,7 +161,7 @@ public class VaultEnvironment implements AutoCloseable {
   }
 
   public String createIdentityRole(String keyName) {
-    String roleName = randomAlphanumeric(10);
+    String roleName = secure().nextAlphabetic(10);
 
     int status;
     try {

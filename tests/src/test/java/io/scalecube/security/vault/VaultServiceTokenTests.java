@@ -2,12 +2,12 @@ package io.scalecube.security.vault;
 
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 
 import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
@@ -32,8 +32,8 @@ public class VaultServiceTokenTests {
     final var serviceTokenSupplier =
         VaultServiceTokenSupplier.builder()
             .vaultAddress(vaultEnvironment.vaultAddr())
-            .vaultTokenSupplier(() -> completedFuture(randomAlphabetic(16)))
-            .serviceRole(randomAlphabetic(16))
+            .vaultTokenSupplier(() -> completedFuture(secure().nextAlphabetic(16)))
+            .serviceRole(secure().nextAlphabetic(16))
             .serviceTokenNameBuilder((role, attributes) -> role)
             .build();
 
@@ -141,7 +141,8 @@ public class VaultServiceTokenTests {
     // Verify serviceToken
 
     final var jwtToken =
-        new Auth0JwtTokenResolver(JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
+        new Auth0JwtTokenResolver(
+                JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
             .resolveToken(serviceToken)
             .get(3, TimeUnit.SECONDS);
 
