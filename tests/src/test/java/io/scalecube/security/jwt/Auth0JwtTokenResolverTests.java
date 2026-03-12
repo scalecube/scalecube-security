@@ -1,9 +1,7 @@
 package io.scalecube.security.jwt;
 
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.StringStartsWith.startsWith;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -64,8 +62,8 @@ public class Auth0JwtTokenResolverTests {
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
-      assertThat(ex, instanceOf(RuntimeException.class));
-      assertThat(ex.getMessage(), startsWith("Cannot get key"));
+      assertInstanceOf(RuntimeException.class, ex);
+      assertTrue(ex.getMessage().startsWith("Cannot get key"));
     }
   }
 
@@ -81,8 +79,8 @@ public class Auth0JwtTokenResolverTests {
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
-      assertThat(ex, instanceOf(JwtUnavailableException.class));
-      assertThat(ex.getMessage(), startsWith("JWKS timeout"));
+      assertInstanceOf(JwtUnavailableException.class, ex);
+      assertTrue(ex.getMessage().startsWith("JWKS timeout"));
     }
   }
 }

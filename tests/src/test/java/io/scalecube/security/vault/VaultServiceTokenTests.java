@@ -3,8 +3,7 @@ package io.scalecube.security.vault;
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.apache.commons.lang3.RandomStringUtils.secure;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.StringStartsWith.startsWith;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -43,7 +42,7 @@ public class VaultServiceTokenTests {
     } catch (ExecutionException e) {
       final var ex = getRootCause(e);
       assertNotNull(ex);
-      assertThat(ex.getMessage(), startsWith("Failed to get service token, status=403"));
+      assertTrue(ex.getMessage().startsWith("Failed to get service token, status=403"));
     }
   }
 
@@ -65,7 +64,7 @@ public class VaultServiceTokenTests {
     } catch (ExecutionException e) {
       final var ex = getRootCause(e);
       assertNotNull(ex);
-      assertThat(ex.getMessage(), startsWith("Failed to get service token, status=400"));
+      assertTrue(ex.getMessage().startsWith("Failed to get service token, status=400"));
     }
   }
 
@@ -107,7 +106,7 @@ public class VaultServiceTokenTests {
     } catch (ExecutionException e) {
       final var ex = getRootCause(e);
       assertNotNull(ex);
-      assertThat(ex.getMessage(), startsWith("Failed to get service token, status=400"));
+      assertTrue(ex.getMessage().startsWith("Failed to get service token, status=400"));
     }
   }
 
