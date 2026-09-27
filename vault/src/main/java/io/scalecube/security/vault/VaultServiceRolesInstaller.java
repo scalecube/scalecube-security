@@ -286,10 +286,6 @@ public class VaultServiceRolesInstaller {
     }
   }
 
-  /**
-   * Reads service roles (yaml) from a variable in caller-supplied {@link Properties}. Nothing is
-   * read from process environment on its own.
-   */
   public static class EnvironmentServiceRolesSupplier implements Supplier<ServiceRoles> {
 
     public static final String DEFAULT_ENV_KEY = "SERVICE_ROLES";
