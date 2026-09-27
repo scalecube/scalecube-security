@@ -17,6 +17,7 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -289,20 +290,28 @@ public class VaultServiceRolesInstaller {
 
     public static final String DEFAULT_ENV_KEY = "SERVICE_ROLES";
 
+    private final Properties properties;
     private final String envKey;
 
-    public EnvironmentServiceRolesSupplier() {
-      this(DEFAULT_ENV_KEY);
+    public EnvironmentServiceRolesSupplier(Properties properties) {
+      this(properties, DEFAULT_ENV_KEY);
     }
 
-    public EnvironmentServiceRolesSupplier(String envKey) {
+    /**
+     * Constructor.
+     *
+     * @param properties properties
+     * @param envKey variable name holding service roles yaml
+     */
+    public EnvironmentServiceRolesSupplier(Properties properties, String envKey) {
+      this.properties = Objects.requireNonNull(properties, "properties");
       this.envKey = Objects.requireNonNull(envKey, "envKey");
     }
 
     @Override
     public ServiceRoles get() {
       try {
-        final String value = System.getenv(envKey);
+        final String value = properties.getProperty(envKey);
         return value != null
             ? OBJECT_MAPPER.readValue(new StringReader(value), ServiceRoles.class)
             : null;
