@@ -24,14 +24,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provides public keys from a remote JWKS endpoint and caches them temporarily. On lookup of a
  * {@code kid} that is not cached (or when cached key set has expired), the whole key set is
  * re-fetched, at most once per {@code minRefreshInterval}. Lookups of an unknown {@code kid} within
- * that interval fail fast with {@link JwtUnavailableException}, without remote calls.
+ * that interval fail fast with {@link JwtUnavailableException}, without remote calls. Expired keys
+ * keep being served while the key set cannot be refreshed (rate limited, in progress, or failed).
  */
 public class JwksKeyProvider {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(JwksKeyProvider.class);
 
   private static final ObjectMapper OBJECT_MAPPER = newObjectMapper();
 
@@ -77,35 +82,60 @@ public class JwksKeyProvider {
       throw new JwtTokenException("Missing kid");
     }
 
-    var key = keySet.find(kid, System.currentTimeMillis());
+    final var current = keySet;
+    final var key = current.keys().get(kid);
     if (key != null) {
-      return key;
-    }
-
-    refreshLock.lock();
-    try {
-      final var now = System.currentTimeMillis();
-      key = keySet.find(kid, now);
-      if (key != null) {
+      if (!current.hasExpired(System.currentTimeMillis())) {
         return key;
       }
-
-      if (refreshed && now - lastRefreshTime < minRefreshInterval) {
-        throw new JwtUnavailableException("Cannot find key by kid: " + kid);
+      // Expired: refresh, unless another thread is already refreshing, then serve expired key
+      if (!refreshLock.tryLock()) {
+        return key;
       }
+    } else {
+      refreshLock.lock();
+    }
 
-      refreshed = true;
-      lastRefreshTime = now;
-      keySet = new KeySet(fetchKeys(), now + keyTtl);
-
-      key = keySet.find(kid, now);
-      if (key == null) {
-        throw new JwtUnavailableException("Cannot find key by kid: " + kid);
-      }
-      return key;
+    try {
+      return refreshAndGetKey(kid);
     } finally {
       refreshLock.unlock();
     }
+  }
+
+  private Key refreshAndGetKey(String kid) {
+    final var now = System.currentTimeMillis();
+    var current = keySet;
+    final var staleKey = current.keys().get(kid);
+    if (staleKey != null && !current.hasExpired(now)) {
+      return staleKey; // refreshed by another thread meanwhile
+    }
+
+    if (refreshed && now - lastRefreshTime < minRefreshInterval) {
+      if (staleKey != null) {
+        return staleKey;
+      }
+      throw new JwtUnavailableException("Cannot find key by kid: " + kid);
+    }
+
+    refreshed = true;
+    lastRefreshTime = now;
+    try {
+      current = new KeySet(fetchKeys(), now + keyTtl);
+      keySet = current;
+    } catch (JwtTokenException ex) {
+      if (staleKey != null) {
+        LOGGER.warn("Failed to refresh jwk keys, using expired key, kid: {}", kid, ex);
+        return staleKey;
+      }
+      throw ex;
+    }
+
+    final var key = current.keys().get(kid);
+    if (key == null) {
+      throw new JwtUnavailableException("Cannot find key by kid: " + kid);
+    }
+    return key;
   }
 
   private Map<String, Key> fetchKeys() {
@@ -140,23 +170,23 @@ public class JwksKeyProvider {
         if (jwkInfo.kid() != null
             && "RSA".equals(jwkInfo.kty())
             && (jwkInfo.use() == null || "sig".equals(jwkInfo.use()))) {
-          keys.put(jwkInfo.kid(), toRsaPublicKey(jwkInfo));
+          try {
+            keys.put(jwkInfo.kid(), toRsaPublicKey(jwkInfo));
+          } catch (Exception ex) {
+            LOGGER.warn("Skipping invalid jwk, kid: {}", jwkInfo.kid(), ex);
+          }
         }
       }
     }
     return Map.copyOf(keys);
   }
 
-  private static PublicKey toRsaPublicKey(JwkInfo jwkInfo) {
-    try {
-      final var decoder = Base64.getUrlDecoder();
-      final var modulus = new BigInteger(1, decoder.decode(jwkInfo.modulus()));
-      final var exponent = new BigInteger(1, decoder.decode(jwkInfo.exponent()));
-      final var keySpec = new RSAPublicKeySpec(modulus, exponent);
-      return KeyFactory.getInstance("RSA").generatePublic(keySpec);
-    } catch (Exception ex) {
-      throw new JwtTokenException("Invalid jwk, kid: " + jwkInfo.kid(), ex);
-    }
+  private static PublicKey toRsaPublicKey(JwkInfo jwkInfo) throws Exception {
+    final var decoder = Base64.getUrlDecoder();
+    final var modulus = new BigInteger(1, decoder.decode(jwkInfo.modulus()));
+    final var exponent = new BigInteger(1, decoder.decode(jwkInfo.exponent()));
+    final var keySpec = new RSAPublicKeySpec(modulus, exponent);
+    return KeyFactory.getInstance("RSA").generatePublic(keySpec);
   }
 
   private static ObjectMapper newObjectMapper() {
@@ -172,8 +202,8 @@ public class JwksKeyProvider {
 
   private record KeySet(Map<String, Key> keys, long expirationDeadline) {
 
-    Key find(String kid, long now) {
-      return now < expirationDeadline ? keys.get(kid) : null;
+    boolean hasExpired(long now) {
+      return now >= expirationDeadline;
     }
   }
 

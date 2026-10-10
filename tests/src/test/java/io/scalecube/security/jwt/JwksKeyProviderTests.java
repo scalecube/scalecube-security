@@ -42,11 +42,11 @@ public class JwksKeyProviderTests {
     server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     server.createContext(
         "/jwks",
-        exchange -> {
+        httpCall -> {
           fetchCount.incrementAndGet();
           final var body = jwks.get().getBytes(StandardCharsets.UTF_8);
-          exchange.sendResponseHeaders(status.get(), body.length);
-          try (var os = exchange.getResponseBody()) {
+          httpCall.sendResponseHeaders(status.get(), body.length);
+          try (var os = httpCall.getResponseBody()) {
             os.write(body);
           }
         });
@@ -96,7 +96,7 @@ public class JwksKeyProviderTests {
 
     final var newKeyPair = newKeyPair();
     jwks.set(jwks(rsaJwk("kid-1", keyPair), rsaJwk("kid-2", newKeyPair)));
-    Thread.sleep(300);
+    Thread.sleep(1000);
 
     final var token = newToken("kid-2", newKeyPair, ISSUER, AUDIENCE);
     assertNotNull(resolver.resolveToken(token).get(3, TimeUnit.SECONDS));
@@ -140,21 +140,80 @@ public class JwksKeyProviderTests {
     assertEquals(JwtTokenException.class, cause.getClass());
   }
 
+  @Test
+  void testExpiredKeyIsServedWithinRefreshInterval() throws Exception {
+    final var resolver = newResolver(100, Duration.ofSeconds(10));
+    resolver.resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS);
+    Thread.sleep(300);
+
+    assertNotNull(resolver.resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS));
+    assertEquals(1, fetchCount.get());
+  }
+
+  @Test
+  void testExpiredKeySetIsRefreshed() throws Exception {
+    final var resolver = newResolver(100, Duration.ofMillis(100));
+    resolver.resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS);
+    Thread.sleep(300);
+
+    assertNotNull(resolver.resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS));
+    assertEquals(2, fetchCount.get());
+  }
+
+  @Test
+  void testExpiredKeyIsServedWhenRefreshFails() throws Exception {
+    final var resolver = newResolver(100, Duration.ofMillis(100));
+    resolver.resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS);
+    status.set(503);
+    Thread.sleep(300);
+
+    assertNotNull(resolver.resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS));
+    assertEquals(2, fetchCount.get());
+  }
+
+  @Test
+  void testInvalidKeyIsSkipped() throws Exception {
+    jwks.set(
+        jwks(
+            "{\"kid\":\"kid-0\",\"kty\":\"RSA\",\"n\":\"!!!\",\"e\":\"AQAB\"}",
+            rsaJwk("kid-1", keyPair)));
+
+    assertNotNull(newResolver().resolveToken(newToken("kid-1")).get(3, TimeUnit.SECONDS));
+  }
+
+  @Test
+  void testEmptyAudienceIsRejected() {
+    final var builder =
+        Auth0JwtTokenResolver.builder()
+            .keyProvider(newKeyProvider(60_000, Duration.ZERO))
+            .audience();
+
+    assertThrows(IllegalArgumentException.class, builder::build);
+  }
+
   private Auth0JwtTokenResolver newResolver() {
     return newResolver(Duration.ofSeconds(10));
   }
 
   private Auth0JwtTokenResolver newResolver(Duration minRefreshInterval) {
+    return newResolver(60_000, minRefreshInterval);
+  }
+
+  private Auth0JwtTokenResolver newResolver(int keyTtl, Duration minRefreshInterval) {
     return Auth0JwtTokenResolver.builder()
-        .keyProvider(
-            JwksKeyProvider.builder()
-                .jwksUri("http://localhost:" + server.getAddress().getPort() + "/jwks")
-                .connectTimeout(Duration.ofSeconds(1))
-                .requestTimeout(Duration.ofSeconds(1))
-                .minRefreshInterval(minRefreshInterval)
-                .build())
+        .keyProvider(newKeyProvider(keyTtl, minRefreshInterval))
         .issuer(ISSUER)
         .audience(AUDIENCE)
+        .build();
+  }
+
+  private JwksKeyProvider newKeyProvider(int keyTtl, Duration minRefreshInterval) {
+    return JwksKeyProvider.builder()
+        .jwksUri("http://localhost:" + server.getAddress().getPort() + "/jwks")
+        .connectTimeout(Duration.ofSeconds(1))
+        .requestTimeout(Duration.ofSeconds(1))
+        .keyTtl(keyTtl)
+        .minRefreshInterval(minRefreshInterval)
         .build();
   }
 

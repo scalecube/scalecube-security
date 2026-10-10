@@ -29,6 +29,9 @@ public class Auth0JwtTokenResolver implements JwtTokenResolver {
   private Auth0JwtTokenResolver(Builder builder) {
     this.keyProvider = Objects.requireNonNull(builder.keyProvider, "keyProvider");
     this.issuer = builder.issuer;
+    if (builder.audience != null && builder.audience.length == 0) {
+      throw new IllegalArgumentException("audience must not be empty");
+    }
     this.audience = builder.audience;
     this.executor = Objects.requireNonNull(builder.executor, "executor");
   }

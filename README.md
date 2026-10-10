@@ -1,11 +1,12 @@
 # scalecube-security
 
 JWT verification against a JWKS endpoint, and service identity (machine-to-machine tokens) on top
-of HashiCorp Vault [identity tokens](https://developer.hashicorp.com/vault/docs/secrets/identity/identity-token).
+of HashiCorp
+Vault [identity tokens](https://developer.hashicorp.com/vault/docs/secrets/identity/identity-token).
 
-| Module | Contents |
-|---|---|
-| `scalecube-security-jwt` | `Auth0JwtTokenResolver`, `JwksKeyProvider`, `JwtToken` |
+| Module                     | Contents                                                  |
+|----------------------------|-----------------------------------------------------------|
+| `scalecube-security-jwt`   | `Auth0JwtTokenResolver`, `JwksKeyProvider`, `JwtToken`    |
 | `scalecube-security-vault` | `VaultServiceRolesInstaller`, `VaultServiceTokenSupplier` |
 
 ```xml
@@ -46,17 +47,23 @@ configured, `iss` and `aud`. On success it returns the token header and claims a
 
 `JwksKeyProvider` caches the whole key set for `keyTtl` (in millis, default 60000). The key set is
 fetched again when a token's `kid` is not in the cache, or when the cached key set has expired.
-Fetches happen on the calling thread, at most once per `minRefreshInterval` (default 5s). Callers
-that need a key during a fetch wait for it to finish. Within that interval, an unknown `kid` fails
-straight away without a remote call, so tokens with made-up `kid` values cannot flood the JWKS
-endpoint.
+Fetches happen on the calling thread, at most once per `minRefreshInterval` (default 5s).
 
-| Builder setting | Default |
-|---|---|
-| `connectTimeout`, `requestTimeout` | `10s` |
-| `keyTtl` | `60000` (millis) |
-| `minRefreshInterval` | `5s` |
-| `httpClient` | new `HttpClient` with `connectTimeout` |
+- Unknown `kid`: the caller waits for the fetch. Within `minRefreshInterval` it fails straight
+  away without a remote call, so tokens with made-up `kid` values cannot flood the JWKS endpoint.
+- Expired key set: one caller fetches, the others keep using the expired keys. Expired keys are
+  also used when the fetch is rate-limited by `minRefreshInterval`, or fails. So verification
+  keeps working while the JWKS endpoint is down, at the cost of accepting a key that the issuer
+  has removed until the next successful fetch.
+
+Invalid keys in the key set are skipped with a warning.
+
+| Builder setting                    | Default                                |
+|------------------------------------|----------------------------------------|
+| `connectTimeout`, `requestTimeout` | `10s`                                  |
+| `keyTtl`                           | `60000` (millis)                       |
+| `minRefreshInterval`               | `5s`                                   |
+| `httpClient`                       | new `HttpClient` with `connectTimeout` |
 
 Only RSA signing keys (`kty: RSA`, `use: sig` or no `use`) are taken from the key set.
 
@@ -67,6 +74,8 @@ for transient errors that are worth retrying:
 
 - the `kid` is not in the key set (for example, right after key rotation);
 - the JWKS endpoint cannot be reached, times out, or does not respond with 200.
+
+Tokens without a `kid` header are rejected (`JwtTokenException`).
 
 `JwtToken.parseToken(token)` only parses a token. It does **not** verify it.
 
@@ -91,12 +100,26 @@ service role:
 
 ```java
 VaultServiceRolesInstaller.builder()
-    .vaultAddress("http://vault:8200")
-    .vaultTokenSupplier(() -> CompletableFuture.completedFuture(vaultToken))
-    .keyNameSupplier(() -> "identity-key")
-    .roleNameBuilder(role -> "my-service." + role)
-    .build()
-    .install();
+    .
+
+vaultAddress("http://vault:8200")
+    .
+
+vaultTokenSupplier(() ->CompletableFuture.
+
+completedFuture(vaultToken))
+  .
+
+keyNameSupplier(() ->"identity-key")
+  .
+
+roleNameBuilder(role ->"my-service."+role)
+  .
+
+build()
+    .
+
+install();
 ```
 
 Service roles are read from the first `serviceRolesSources` entry that returns a result. The
@@ -106,19 +129,19 @@ default source is the classpath resource `service-roles.yaml`. `FileServiceRoles
 ```yaml
 roles:
   - role: reader
-    permissions: [read]
+    permissions: [ read ]
   - role: admin
-    permissions: [read, write]
+    permissions: [ read, write ]
 ```
 
-| Builder setting | Default |
-|---|---|
-| `keyAlgorithm` | `RS256` (the only one `Auth0JwtTokenResolver` accepts) |
-| `keyRotationPeriod` | `1h` |
-| `keyVerificationTtl` | `1h` |
-| `roleTtl` (token lifetime) | `1m` |
-| `timeout` (whole installation) | `10s` |
-| `connectTimeoutSeconds`, `readTimeoutSeconds` (each Vault call) | `10` |
+| Builder setting                                                 | Default                                                |
+|-----------------------------------------------------------------|--------------------------------------------------------|
+| `keyAlgorithm`                                                  | `RS256` (the only one `Auth0JwtTokenResolver` accepts) |
+| `keyRotationPeriod`                                             | `1h`                                                   |
+| `keyVerificationTtl`                                            | `1h`                                                   |
+| `roleTtl` (token lifetime)                                      | `1m`                                                   |
+| `timeout` (whole installation)                                  | `10s`                                                  |
+| `connectTimeoutSeconds`, `readTimeoutSeconds` (each Vault call) | `10`                                                   |
 
 If `vaultAddress` is empty, `none` or `null` (the string), installation is skipped.
 
@@ -126,13 +149,13 @@ If `vaultAddress` is empty, `none` or `null` (the string), installation is skipp
 
 ```java
 CompletableFuture<String> serviceToken =
-    VaultServiceTokenSupplier.builder()
-        .vaultAddress("http://vault:8200")
-        .vaultTokenSupplier(() -> CompletableFuture.completedFuture(vaultToken))
-        .serviceRole("reader")
-        .serviceTokenNameBuilder((role, tags) -> "my-service." + role)
-        .build()
-        .getToken(Map.of());
+  VaultServiceTokenSupplier.builder()
+    .vaultAddress("http://vault:8200")
+    .vaultTokenSupplier(() -> CompletableFuture.completedFuture(vaultToken))
+    .serviceRole("reader")
+    .serviceTokenNameBuilder((role, tags) -> "my-service." + role)
+    .build()
+    .getToken(Map.of());
 ```
 
 `serviceTokenNameBuilder` must produce the same Vault role name as the installer's
