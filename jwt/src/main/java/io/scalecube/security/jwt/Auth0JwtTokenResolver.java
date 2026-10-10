@@ -13,8 +13,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Resolves and verifies JWT tokens using public keys provided by {@link JwksKeyProvider}. Tokens
- * are validated asynchronously and parsed into {@link JwtToken} instances. Optionally, token issuer
- * ({@code iss}) and audience ({@code aud}) are verified.
+ * are validated asynchronously and parsed into {@link JwtToken} instances. Only {@code RS256}
+ * signed tokens are supported. Optionally, token issuer ({@code iss}) and audience ({@code aud})
+ * are verified.
  */
 public class Auth0JwtTokenResolver implements JwtTokenResolver {
 
@@ -24,10 +25,6 @@ public class Auth0JwtTokenResolver implements JwtTokenResolver {
   private final String issuer;
   private final String[] audience;
   private final Executor executor;
-
-  public Auth0JwtTokenResolver(JwksKeyProvider keyProvider) {
-    this(builder().keyProvider(keyProvider));
-  }
 
   private Auth0JwtTokenResolver(Builder builder) {
     this.keyProvider = Objects.requireNonNull(builder.keyProvider, "keyProvider");

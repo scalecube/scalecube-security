@@ -140,8 +140,9 @@ public class VaultServiceTokenTests {
     // Verify serviceToken
 
     final var jwtToken =
-        new Auth0JwtTokenResolver(
-                JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
+        Auth0JwtTokenResolver.builder()
+            .keyProvider(JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
+            .build()
             .resolveToken(serviceToken)
             .get(3, TimeUnit.SECONDS);
 
