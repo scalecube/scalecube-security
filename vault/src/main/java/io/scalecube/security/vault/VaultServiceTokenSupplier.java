@@ -4,6 +4,7 @@ import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
 import com.bettercloud.vault.rest.RestResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -23,6 +24,8 @@ public class VaultServiceTokenSupplier {
   private final String serviceRole;
   private final Supplier<CompletableFuture<String>> vaultTokenSupplier;
   private final BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
+  private final int connectTimeoutSeconds;
+  private final int readTimeoutSeconds;
 
   private VaultServiceTokenSupplier(Builder builder) {
     this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
@@ -31,6 +34,8 @@ public class VaultServiceTokenSupplier {
         Objects.requireNonNull(builder.vaultTokenSupplier, "vaultTokenSupplier");
     this.serviceTokenNameBuilder =
         Objects.requireNonNull(builder.serviceTokenNameBuilder, "serviceTokenNameBuilder");
+    this.connectTimeoutSeconds = builder.connectTimeoutSeconds;
+    this.readTimeoutSeconds = builder.readTimeoutSeconds;
   }
 
   public static Builder builder() {
@@ -63,22 +68,24 @@ public class VaultServiceTokenSupplier {
             });
   }
 
-  private static String rpcGetToken(String uri, String vaultToken) {
+  private String rpcGetToken(String uri, String vaultToken) {
     try {
       final RestResponse response =
-          new Rest().header(VAULT_TOKEN_HEADER, vaultToken).url(uri).get();
+          new Rest()
+              .header(VAULT_TOKEN_HEADER, vaultToken)
+              .connectTimeoutSeconds(connectTimeoutSeconds)
+              .readTimeoutSeconds(readTimeoutSeconds)
+              .url(uri)
+              .get();
 
-      int status = response.getStatus();
+      final var status = response.getStatus();
+      final var body = new String(response.getBody(), StandardCharsets.UTF_8);
       if (status != 200) {
-        throw new IllegalStateException("Failed to get service token, status=" + status);
+        throw new IllegalStateException(
+            "Failed to get service token, status=" + status + ", body=" + body);
       }
 
-      return Json.parse(new String(response.getBody()))
-          .asObject()
-          .get("data")
-          .asObject()
-          .get("token")
-          .asString();
+      return Json.parse(body).asObject().get("data").asObject().get("token").asString();
     } catch (RestException e) {
       throw new RuntimeException(e);
     }
@@ -101,6 +108,8 @@ public class VaultServiceTokenSupplier {
     private String serviceRole;
     private Supplier<CompletableFuture<String>> vaultTokenSupplier;
     private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
+    private int connectTimeoutSeconds = 10;
+    private int readTimeoutSeconds = 10;
 
     private Builder() {}
 
@@ -148,6 +157,28 @@ public class VaultServiceTokenSupplier {
     public Builder serviceTokenNameBuilder(
         BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder) {
       this.serviceTokenNameBuilder = serviceTokenNameBuilder;
+      return this;
+    }
+
+    /**
+     * Setter for {@code connectTimeoutSeconds} of vault http calls.
+     *
+     * @param connectTimeoutSeconds connectTimeoutSeconds (optional)
+     * @return this
+     */
+    public Builder connectTimeoutSeconds(int connectTimeoutSeconds) {
+      this.connectTimeoutSeconds = connectTimeoutSeconds;
+      return this;
+    }
+
+    /**
+     * Setter for {@code readTimeoutSeconds} of vault http calls.
+     *
+     * @param readTimeoutSeconds readTimeoutSeconds (optional)
+     * @return this
+     */
+    public Builder readTimeoutSeconds(int readTimeoutSeconds) {
+      this.readTimeoutSeconds = readTimeoutSeconds;
       return this;
     }
 

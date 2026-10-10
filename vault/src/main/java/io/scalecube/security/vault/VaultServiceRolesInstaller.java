@@ -3,6 +3,7 @@ package io.scalecube.security.vault;
 import com.bettercloud.vault.json.Json;
 import com.bettercloud.vault.rest.Rest;
 import com.bettercloud.vault.rest.RestException;
+import com.bettercloud.vault.rest.RestResponse;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,6 +50,8 @@ public class VaultServiceRolesInstaller {
   private final String roleTtl;
   private final long timeout;
   private final TimeUnit timeUnit;
+  private final int connectTimeoutSeconds;
+  private final int readTimeoutSeconds;
 
   private VaultServiceRolesInstaller(Builder builder) {
     this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
@@ -65,6 +68,8 @@ public class VaultServiceRolesInstaller {
     this.roleTtl = Objects.requireNonNull(builder.roleTtl, "roleTtl");
     this.timeout = builder.timeout;
     this.timeUnit = builder.timeUnit;
+    this.connectTimeoutSeconds = builder.connectTimeoutSeconds;
+    this.readTimeoutSeconds = builder.readTimeoutSeconds;
   }
 
   public static Builder builder() {
@@ -82,9 +87,15 @@ public class VaultServiceRolesInstaller {
     }
 
     final ServiceRoles serviceRoles = loadServiceRoles();
-    if (serviceRoles == null || serviceRoles.roles.isEmpty()) {
+    if (serviceRoles == null || serviceRoles.roles == null || serviceRoles.roles.isEmpty()) {
       LOGGER.debug("Skipping service roles installation, service roles not set");
       return;
+    }
+
+    for (var role : serviceRoles.roles) {
+      if (role == null || role.role == null || role.role.isEmpty()) {
+        throw new IllegalArgumentException("Invalid service role: " + role);
+      }
     }
 
     try {
@@ -92,7 +103,11 @@ public class VaultServiceRolesInstaller {
           .get()
           .thenAcceptAsync(
               token -> {
-                final var rest = new Rest().header(VAULT_TOKEN_HEADER, token);
+                final var rest =
+                    new Rest()
+                        .header(VAULT_TOKEN_HEADER, token)
+                        .connectTimeoutSeconds(connectTimeoutSeconds)
+                        .readTimeoutSeconds(readTimeoutSeconds);
                 final var keyName = keyNameSupplier.get();
 
                 createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
@@ -127,9 +142,14 @@ public class VaultServiceRolesInstaller {
     return null;
   }
 
-  private static void awaitSuccess(int status) {
+  private static void awaitSuccess(RestResponse response) {
+    final var status = response.getStatus();
     if (status != 200 && status != 204) {
-      throw new IllegalStateException("Not expected status returned, status=" + status);
+      throw new IllegalStateException(
+          "Not expected status returned, status="
+              + status
+              + ", body="
+              + new String(response.getBody(), StandardCharsets.UTF_8));
     }
   }
 
@@ -144,7 +164,7 @@ public class VaultServiceRolesInstaller {
             .getBytes(StandardCharsets.UTF_8);
 
     try {
-      awaitSuccess(rest.body(body).post().getStatus());
+      awaitSuccess(rest.body(body).post());
     } catch (RestException e) {
       throw new RuntimeException("Failed to create vault identity key: " + keyName, e);
     }
@@ -161,7 +181,7 @@ public class VaultServiceRolesInstaller {
             .getBytes(StandardCharsets.UTF_8);
 
     try {
-      awaitSuccess(rest.body(body).post().getStatus());
+      awaitSuccess(rest.body(body).post());
     } catch (RestException e) {
       throw new RuntimeException("Failed to create vault identity role: " + roleName, e);
     }
@@ -172,7 +192,7 @@ public class VaultServiceRolesInstaller {
         .encodeToString(
             Json.object()
                 .add("role", roleName)
-                .add("permissions", String.join(",", permissions))
+                .add("permissions", permissions != null ? String.join(",", permissions) : "")
                 .toString()
                 .getBytes(StandardCharsets.UTF_8));
   }
@@ -267,9 +287,8 @@ public class VaultServiceRolesInstaller {
 
     @Override
     public ServiceRoles get() {
-      try {
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        InputStream inputStream = classLoader.getResourceAsStream(fileName);
+      final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+      try (InputStream inputStream = classLoader.getResourceAsStream(fileName)) {
         return inputStream != null
             ? OBJECT_MAPPER.readValue(inputStream, ServiceRoles.class)
             : null;
@@ -379,6 +398,8 @@ public class VaultServiceRolesInstaller {
     private String roleTtl = "1m";
     private long timeout = 10;
     private TimeUnit timeUnit = TimeUnit.SECONDS;
+    private int connectTimeoutSeconds = 10;
+    private int readTimeoutSeconds = 10;
 
     private Builder() {}
 
@@ -430,6 +451,16 @@ public class VaultServiceRolesInstaller {
     public Builder timeout(long timeout, TimeUnit timeUnit) {
       this.timeout = timeout;
       this.timeUnit = timeUnit;
+      return this;
+    }
+
+    public Builder connectTimeoutSeconds(int connectTimeoutSeconds) {
+      this.connectTimeoutSeconds = connectTimeoutSeconds;
+      return this;
+    }
+
+    public Builder readTimeoutSeconds(int readTimeoutSeconds) {
+      this.readTimeoutSeconds = readTimeoutSeconds;
       return this;
     }
 
