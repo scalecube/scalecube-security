@@ -120,14 +120,16 @@ roles:
     permissions: [ read, write ]
 ```
 
-| Builder setting                                                 | Default                                                |
-|-----------------------------------------------------------------|--------------------------------------------------------|
-| `keyAlgorithm`                                                  | `RS256` (the only one `Auth0JwtTokenResolver` accepts) |
-| `keyRotationPeriod`                                             | `1h`                                                   |
-| `keyVerificationTtl`                                            | `1h`                                                   |
-| `roleTtl` (token lifetime)                                      | `1m`                                                   |
-| `timeout` (whole installation)                                  | `10s`                                                  |
-| `connectTimeoutSeconds`, `readTimeoutSeconds` (each Vault call) | `10`                                                   |
+| Builder setting                | Default                                                |
+|--------------------------------|--------------------------------------------------------|
+| `keyAlgorithm`                 | `RS256` (the only one `Auth0JwtTokenResolver` accepts) |
+| `keyRotationPeriod`            | `1h`                                                   |
+| `keyVerificationTtl`           | `1h`                                                   |
+| `roleTtl` (token lifetime)     | `1m`                                                   |
+| `timeout` (whole installation) | `10s`                                                  |
+
+`roleTtl` must not be longer than `keyVerificationTtl`: Vault (since 1.8.1) rejects such a role
+with `400`.
 
 If `vaultAddress` is empty, `none` or `null` (the string), installation is skipped.
 
@@ -145,5 +147,38 @@ CompletableFuture<String> serviceToken =
 ```
 
 `serviceTokenNameBuilder` must produce the same Vault role name as the installer's
-`roleNameBuilder`. Each Vault call has a 10s connect timeout and a 10s read timeout by default
-(`connectTimeoutSeconds`, `readTimeoutSeconds`).
+`roleNameBuilder`.
+
+### Vault HTTP calls
+
+Both classes call the [Vault HTTP API](https://developer.hashicorp.com/vault/api-docs) with the JDK
+`HttpClient`, following the API reference rather than a particular Vault version.
+
+- Every request sends `X-Vault-Token` and `X-Vault-Request: true`.
+- `200` and `204` are success. Any other status fails with `VaultRequestException`, which carries
+  the status code and Vault's error messages.
+- Redirects (`307` from a standby node, when request forwarding is off) are followed, keeping the
+  method, body and Vault token, to whatever host the Vault node names (its `api_addr`). The JDK
+  client never follows a redirect from `https` to `http`.
+- A trailing `/` in `vaultAddress` is ignored, and an address with a path prefix
+  (`https://host/vault`) is supported; a query or fragment is rejected. Key and role names must
+  not contain `/` or end with `.`.
+- No retries: retrying is up to the caller.
+
+| Builder setting (both classes) | Default                                                     |
+|--------------------------------|-------------------------------------------------------------|
+| `connectTimeout`               | `10s`                                                       |
+| `requestTimeout`               | `10s` (each Vault call)                                     |
+| `httpClient`                   | new `HttpClient` with `connectTimeout`, following redirects |
+
+### Supported Vault versions
+
+Compatibility is guaranteed for two Vault versions: the oldest release still
+[supported by HashiCorp](https://developer.hashicorp.com/vault/docs/enterprise/lts), and the
+latest release. The exact versions are the CI matrix in `.github/workflows/branch-ci.yml`, run on
+every push. When a version leaves HashiCorp support it is dropped, and the latest entry moves with
+new releases. CI also runs `hashicorp/vault:latest` without failing the build, as an early warning.
+Other versions are likely to work but are not guaranteed.
+
+To run the integration tests against a given Vault version:
+`mvn verify -Dvault.image=hashicorp/vault:<version>` (default: the latest guaranteed version).

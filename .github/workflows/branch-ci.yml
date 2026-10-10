@@ -11,8 +11,20 @@ on:
 
 jobs:
   build:
-    name: Branch CI
+    name: Branch CI (vault ${{ matrix.vault-image }})
     runs-on: ubuntu-latest
+    # Guaranteed vault versions (single source of truth, policy in README.md): oldest supported by
+    # HashiCorp, and latest; the latest one is also the default in VaultEnvironment. Non-blocking
+    # 'latest' gives early warning about new vault releases.
+    strategy:
+      fail-fast: false
+      matrix:
+        vault-image: [ 'hashicorp/vault:1.19.5', 'hashicorp/vault:2.1.2' ]
+        experimental: [ false ]
+        include:
+          - vault-image: 'hashicorp/vault:latest'
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v3
@@ -34,4 +46,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ORGANIZATION_TOKEN }}
       - name: Maven Verify
-        run: mvn verify -B
+        run: mvn verify -B -Dvault.image=${{ matrix.vault-image }}

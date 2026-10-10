@@ -1,11 +1,9 @@
 package io.scalecube.security.vault;
 
-import com.bettercloud.vault.json.Json;
-import com.bettercloud.vault.rest.Rest;
-import com.bettercloud.vault.rest.RestException;
-import com.bettercloud.vault.rest.RestResponse;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.File;
@@ -13,15 +11,20 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.StringJoiner;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -31,13 +34,13 @@ public class VaultServiceRolesInstaller {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceRolesInstaller.class);
 
-  private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
-
   private static final List<Supplier<ServiceRoles>> DEFAULT_SERVICE_ROLES_SOURCES =
       Collections.singletonList(new ResourcesServiceRolesSupplier());
 
   private static final ObjectMapper OBJECT_MAPPER =
       new ObjectMapper(new YAMLFactory()).setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+
+  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
   private final String vaultAddress;
   private final Supplier<CompletableFuture<String>> vaultTokenSupplier;
@@ -50,8 +53,7 @@ public class VaultServiceRolesInstaller {
   private final String roleTtl;
   private final long timeout;
   private final TimeUnit timeUnit;
-  private final int connectTimeoutSeconds;
-  private final int readTimeoutSeconds;
+  private final VaultClient vaultClient;
 
   private VaultServiceRolesInstaller(Builder builder) {
     this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
@@ -68,8 +70,15 @@ public class VaultServiceRolesInstaller {
     this.roleTtl = Objects.requireNonNull(builder.roleTtl, "roleTtl");
     this.timeout = builder.timeout;
     this.timeUnit = builder.timeUnit;
-    this.connectTimeoutSeconds = builder.connectTimeoutSeconds;
-    this.readTimeoutSeconds = builder.readTimeoutSeconds;
+    this.vaultClient =
+        isNullOrNoneOrEmpty(vaultAddress)
+            ? null
+            : new VaultClient(
+                vaultAddress,
+                builder.httpClient != null
+                    ? builder.httpClient
+                    : VaultClient.newHttpClient(builder.connectTimeout),
+                builder.requestTimeout);
   }
 
   public static Builder builder() {
@@ -98,36 +107,49 @@ public class VaultServiceRolesInstaller {
       }
     }
 
+    final var keyName = keyNameSupplier.get();
+    final var cancelled = new AtomicBoolean();
+    final var installation =
+        vaultTokenSupplier
+            .get()
+            .thenCompose(
+                token -> {
+                  CompletableFuture<?> future =
+                      post(cancelled, token, keyBody(), "identity", "oidc", "key", keyName)
+                          .thenRun(() -> LOGGER.debug("Vault identity key: {}", keyName));
+
+                  for (var role : serviceRoles.roles) {
+                    final var roleName = roleNameBuilder.apply(role.role);
+                    future =
+                        future
+                            .thenCompose(
+                                v ->
+                                    post(
+                                        cancelled,
+                                        token,
+                                        roleBody(keyName, role.role, role.permissions),
+                                        "identity",
+                                        "oidc",
+                                        "role",
+                                        roleName))
+                            .thenRun(() -> LOGGER.debug("Vault identity role: {}", roleName));
+                  }
+                  return future;
+                });
+
     try {
-      vaultTokenSupplier
-          .get()
-          .thenAcceptAsync(
-              token -> {
-                final var rest =
-                    new Rest()
-                        .header(VAULT_TOKEN_HEADER, token)
-                        .connectTimeoutSeconds(connectTimeoutSeconds)
-                        .readTimeoutSeconds(readTimeoutSeconds);
-                final var keyName = keyNameSupplier.get();
-
-                createVaultIdentityKey(rest.url(vaultIdentityKeyUri(keyName)), keyName);
-                LOGGER.debug("Vault identity key: {}", keyName);
-
-                for (var role : serviceRoles.roles) {
-                  final var roleName = roleNameBuilder.apply(role.role);
-                  createVaultIdentityRole(
-                      rest.url(vaultIdentityRoleUri(roleName)),
-                      keyName,
-                      role.role,
-                      role.permissions);
-                  LOGGER.debug("Vault identity role: {}", roleName);
-                }
-
-                LOGGER.debug("Installed service roles: {}", serviceRoles);
-              })
-          .get(timeout, timeUnit);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      installation.get(timeout, timeUnit);
+      LOGGER.debug("Installed service roles: {}", serviceRoles);
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Failed to install service roles", e.getCause());
+    } catch (TimeoutException e) {
+      // Remaining requests are not sent; an in-flight one is bounded by requestTimeout
+      cancelled.set(true);
+      installation.cancel(true);
+      throw new RuntimeException("Failed to install service roles, timeout", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while installing service roles", e);
     }
   }
 
@@ -142,74 +164,41 @@ public class VaultServiceRolesInstaller {
     return null;
   }
 
-  private static void awaitSuccess(RestResponse response) {
-    final var status = response.getStatus();
-    if (status != 200 && status != 204) {
-      throw new IllegalStateException(
-          "Not expected status returned, status="
-              + status
-              + ", body="
-              + new String(response.getBody(), StandardCharsets.UTF_8));
+  private CompletableFuture<JsonNode> post(
+      AtomicBoolean cancelled, String token, Object body, String... pathSegments) {
+    if (cancelled.get()) {
+      return CompletableFuture.failedFuture(
+          new CancellationException("Service roles installation cancelled"));
     }
+    return vaultClient.post(token, body, pathSegments);
   }
 
-  private void createVaultIdentityKey(Rest rest, String keyName) {
-    final byte[] body =
-        Json.object()
-            .add("rotation_period", keyRotationPeriod)
-            .add("verification_ttl", keyVerificationTtl)
-            .add("allowed_client_ids", "*")
-            .add("algorithm", keyAlgorithm)
-            .toString()
-            .getBytes(StandardCharsets.UTF_8);
+  // https://developer.hashicorp.com/vault/api-docs/secret/identity/tokens#create-a-named-key
+  private Map<String, Object> keyBody() {
+    return Map.of(
+        "rotation_period", keyRotationPeriod,
+        "verification_ttl", keyVerificationTtl,
+        "allowed_client_ids", List.of("*"),
+        "algorithm", keyAlgorithm);
+  }
 
+  // https://developer.hashicorp.com/vault/api-docs/secret/identity/tokens#create-or-update-a-role
+  private Map<String, Object> roleBody(String keyName, String roleName, List<String> permissions) {
+    return Map.of("key", keyName, "template", template(roleName, permissions), "ttl", roleTtl);
+  }
+
+  // Template is a json string (base64 is also accepted by vault, but not needed)
+  private static String template(String roleName, List<String> permissions) {
     try {
-      awaitSuccess(rest.body(body).post());
-    } catch (RestException e) {
-      throw new RuntimeException("Failed to create vault identity key: " + keyName, e);
+      return JSON_MAPPER.writeValueAsString(
+          Map.of(
+              "role",
+              roleName,
+              "permissions",
+              permissions != null ? String.join(",", permissions) : ""));
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(e);
     }
-  }
-
-  private void createVaultIdentityRole(
-      Rest rest, String keyName, String roleName, List<String> permissions) {
-    final byte[] body =
-        Json.object()
-            .add("key", keyName)
-            .add("template", createTemplate(roleName, permissions))
-            .add("ttl", roleTtl)
-            .toString()
-            .getBytes(StandardCharsets.UTF_8);
-
-    try {
-      awaitSuccess(rest.body(body).post());
-    } catch (RestException e) {
-      throw new RuntimeException("Failed to create vault identity role: " + roleName, e);
-    }
-  }
-
-  private static String createTemplate(String roleName, List<String> permissions) {
-    // Vault decodes template with standard base64 (not url-safe)
-    return Base64.getEncoder()
-        .encodeToString(
-            Json.object()
-                .add("role", roleName)
-                .add("permissions", permissions != null ? String.join(",", permissions) : "")
-                .toString()
-                .getBytes(StandardCharsets.UTF_8));
-  }
-
-  private String vaultIdentityKeyUri(String keyName) {
-    return new StringJoiner("/", vaultAddress, "")
-        .add("/v1/identity/oidc/key")
-        .add(keyName)
-        .toString();
-  }
-
-  private String vaultIdentityRoleUri(String roleName) {
-    return new StringJoiner("/", vaultAddress, "")
-        .add("/v1/identity/oidc/role")
-        .add(roleName)
-        .toString();
   }
 
   private static boolean isNullOrNoneOrEmpty(String value) {
@@ -399,8 +388,9 @@ public class VaultServiceRolesInstaller {
     private String roleTtl = "1m";
     private long timeout = 10;
     private TimeUnit timeUnit = TimeUnit.SECONDS;
-    private int connectTimeoutSeconds = 10;
-    private int readTimeoutSeconds = 10;
+    private Duration connectTimeout = Duration.ofSeconds(10);
+    private Duration requestTimeout = Duration.ofSeconds(10);
+    private HttpClient httpClient;
 
     private Builder() {}
 
@@ -455,13 +445,37 @@ public class VaultServiceRolesInstaller {
       return this;
     }
 
-    public Builder connectTimeoutSeconds(int connectTimeoutSeconds) {
-      this.connectTimeoutSeconds = connectTimeoutSeconds;
+    /**
+     * Setter for {@code connectTimeout} of vault http calls. Ignored if {@code httpClient} is set.
+     *
+     * @param connectTimeout connectTimeout (optional)
+     * @return this
+     */
+    public Builder connectTimeout(Duration connectTimeout) {
+      this.connectTimeout = connectTimeout;
       return this;
     }
 
-    public Builder readTimeoutSeconds(int readTimeoutSeconds) {
-      this.readTimeoutSeconds = readTimeoutSeconds;
+    /**
+     * Setter for {@code requestTimeout} of each vault http call.
+     *
+     * @param requestTimeout requestTimeout (optional)
+     * @return this
+     */
+    public Builder requestTimeout(Duration requestTimeout) {
+      this.requestTimeout = requestTimeout;
+      return this;
+    }
+
+    /**
+     * Setter for optional {@link HttpClient}. It should follow redirects ({@link
+     * HttpClient.Redirect#NORMAL}), as vault standby nodes may redirect to the active node.
+     *
+     * @param httpClient httpClient
+     * @return this
+     */
+    public Builder httpClient(HttpClient httpClient) {
+      this.httpClient = httpClient;
       return this;
     }
 

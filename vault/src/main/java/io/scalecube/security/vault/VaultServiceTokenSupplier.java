@@ -1,13 +1,9 @@
 package io.scalecube.security.vault;
 
-import com.bettercloud.vault.json.Json;
-import com.bettercloud.vault.rest.Rest;
-import com.bettercloud.vault.rest.RestException;
-import com.bettercloud.vault.rest.RestResponse;
-import java.nio.charset.StandardCharsets;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
-import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
@@ -18,24 +14,24 @@ public class VaultServiceTokenSupplier {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VaultServiceTokenSupplier.class);
 
-  private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
-
-  private final String vaultAddress;
   private final String serviceRole;
   private final Supplier<CompletableFuture<String>> vaultTokenSupplier;
   private final BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
-  private final int connectTimeoutSeconds;
-  private final int readTimeoutSeconds;
+  private final VaultClient vaultClient;
 
   private VaultServiceTokenSupplier(Builder builder) {
-    this.vaultAddress = Objects.requireNonNull(builder.vaultAddress, "vaultAddress");
     this.serviceRole = Objects.requireNonNull(builder.serviceRole, "serviceRole");
     this.vaultTokenSupplier =
         Objects.requireNonNull(builder.vaultTokenSupplier, "vaultTokenSupplier");
     this.serviceTokenNameBuilder =
         Objects.requireNonNull(builder.serviceTokenNameBuilder, "serviceTokenNameBuilder");
-    this.connectTimeoutSeconds = builder.connectTimeoutSeconds;
-    this.readTimeoutSeconds = builder.readTimeoutSeconds;
+    this.vaultClient =
+        new VaultClient(
+            builder.vaultAddress,
+            builder.httpClient != null
+                ? builder.httpClient
+                : VaultClient.newHttpClient(builder.connectTimeout),
+            builder.requestTimeout);
   }
 
   public static Builder builder() {
@@ -47,52 +43,30 @@ public class VaultServiceTokenSupplier {
    *
    * @param tags tags attributes, along with {@code serviceRole} will be applied on {@code
    *     serviceTokenNameBuilder}
-   * @return vault service token
+   * @return vault service token, or failed future (with {@link VaultRequestException} if vault
+   *     responded with error)
    */
   public CompletableFuture<String> getToken(Map<String, String> tags) {
     return vaultTokenSupplier
         .get()
-        .thenApplyAsync(
+        .thenCompose(
             vaultToken -> {
               final var role = serviceTokenNameBuilder.apply(serviceRole, tags);
-              final var uri = serviceTokenUri(vaultAddress, role);
-              try {
-                final var token = rpcGetToken(uri, vaultToken);
-                if (LOGGER.isDebugEnabled()) {
-                  LOGGER.debug("Got service token: {}, role: {}", mask(token), role);
-                }
-                return token;
-              } catch (Exception ex) {
-                throw new RuntimeException("Failed to get service token, role: " + role, ex);
-              }
+              return vaultClient
+                  .get(vaultToken, "identity", "oidc", "token", role)
+                  .thenApply(
+                      response -> {
+                        final var token = response.path("data").path("token").textValue();
+                        if (token == null) {
+                          throw new IllegalStateException(
+                              "Vault response has no data.token, role: " + role);
+                        }
+                        if (LOGGER.isDebugEnabled()) {
+                          LOGGER.debug("Got service token: {}, role: {}", mask(token), role);
+                        }
+                        return token;
+                      });
             });
-  }
-
-  private String rpcGetToken(String uri, String vaultToken) {
-    try {
-      final RestResponse response =
-          new Rest()
-              .header(VAULT_TOKEN_HEADER, vaultToken)
-              .connectTimeoutSeconds(connectTimeoutSeconds)
-              .readTimeoutSeconds(readTimeoutSeconds)
-              .url(uri)
-              .get();
-
-      final var status = response.getStatus();
-      final var body = new String(response.getBody(), StandardCharsets.UTF_8);
-      if (status != 200) {
-        throw new IllegalStateException(
-            "Failed to get service token, status=" + status + ", body=" + body);
-      }
-
-      return Json.parse(body).asObject().get("data").asObject().get("token").asString();
-    } catch (RestException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static String serviceTokenUri(final String address, final String role) {
-    return new StringJoiner("/", address, "").add("/v1/identity/oidc/token").add(role).toString();
   }
 
   private static String mask(String data) {
@@ -108,8 +82,9 @@ public class VaultServiceTokenSupplier {
     private String serviceRole;
     private Supplier<CompletableFuture<String>> vaultTokenSupplier;
     private BiFunction<String, Map<String, String>, String> serviceTokenNameBuilder;
-    private int connectTimeoutSeconds = 10;
-    private int readTimeoutSeconds = 10;
+    private Duration connectTimeout = Duration.ofSeconds(10);
+    private Duration requestTimeout = Duration.ofSeconds(10);
+    private HttpClient httpClient;
 
     private Builder() {}
 
@@ -161,24 +136,36 @@ public class VaultServiceTokenSupplier {
     }
 
     /**
-     * Setter for {@code connectTimeoutSeconds} of vault http calls.
+     * Setter for {@code connectTimeout} of vault http calls. Ignored if {@code httpClient} is set.
      *
-     * @param connectTimeoutSeconds connectTimeoutSeconds (optional)
+     * @param connectTimeout connectTimeout (optional)
      * @return this
      */
-    public Builder connectTimeoutSeconds(int connectTimeoutSeconds) {
-      this.connectTimeoutSeconds = connectTimeoutSeconds;
+    public Builder connectTimeout(Duration connectTimeout) {
+      this.connectTimeout = connectTimeout;
       return this;
     }
 
     /**
-     * Setter for {@code readTimeoutSeconds} of vault http calls.
+     * Setter for {@code requestTimeout} of vault http calls.
      *
-     * @param readTimeoutSeconds readTimeoutSeconds (optional)
+     * @param requestTimeout requestTimeout (optional)
      * @return this
      */
-    public Builder readTimeoutSeconds(int readTimeoutSeconds) {
-      this.readTimeoutSeconds = readTimeoutSeconds;
+    public Builder requestTimeout(Duration requestTimeout) {
+      this.requestTimeout = requestTimeout;
+      return this;
+    }
+
+    /**
+     * Setter for optional {@link HttpClient}. It should follow redirects ({@link
+     * HttpClient.Redirect#NORMAL}), as vault standby nodes may redirect to the active node.
+     *
+     * @param httpClient httpClient
+     * @return this
+     */
+    public Builder httpClient(HttpClient httpClient) {
+      this.httpClient = httpClient;
       return this;
     }
 
