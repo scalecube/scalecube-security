@@ -39,7 +39,7 @@
   </modules>
 
   <properties>
-    <scalecube-test-support.version>0.1.11</scalecube-test-support.version>
+    <scalecube-test-support.version>0.1.13</scalecube-test-support.version>
 
     <distributionManagement.url>https://maven.pkg.github.com/scalecube/scalecube-security
     </distributionManagement.url>

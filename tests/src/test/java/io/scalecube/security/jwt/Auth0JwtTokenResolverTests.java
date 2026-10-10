@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import io.scalecube.security.environment.IntegrationEnvironmentFixture;
 import io.scalecube.security.environment.VaultEnvironment;
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,13 +25,15 @@ public class Auth0JwtTokenResolverTests {
     final var token = vaultEnvironment.newServiceToken();
 
     final var jwtToken =
-        new Auth0JwtTokenResolver(
+        Auth0JwtTokenResolver.builder()
+            .keyProvider(
                 JwksKeyProvider.builder()
                     .jwksUri(vaultEnvironment.jwksUri())
                     .connectTimeout(Duration.ofSeconds(3))
                     .requestTimeout(Duration.ofSeconds(3))
                     .keyTtl(1000)
                     .build())
+            .build()
             .resolveToken(token)
             .get(3, TimeUnit.SECONDS);
 
@@ -58,7 +61,7 @@ public class Auth0JwtTokenResolverTests {
     when(keyProvider.getKey(any())).thenThrow(new RuntimeException("Cannot get key"));
 
     try {
-      new Auth0JwtTokenResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
+      newResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
     } catch (Exception e) {
       final var ex = getRootCause(e);
@@ -75,12 +78,18 @@ public class Auth0JwtTokenResolverTests {
     when(keyProvider.getKey(any())).thenThrow(new JwtUnavailableException("JWKS timeout"));
 
     try {
-      new Auth0JwtTokenResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
+      newResolver(keyProvider).resolveToken(token).get(3, TimeUnit.SECONDS);
       fail("Expected exception");
-    } catch (Exception e) {
-      final var ex = getRootCause(e);
+    } catch (ExecutionException e) {
+      final var ex = e.getCause();
       assertInstanceOf(JwtUnavailableException.class, ex);
       assertTrue(ex.getMessage().startsWith("JWKS timeout"));
+    } catch (Exception e) {
+      fail("Unexpected exception: " + e);
     }
+  }
+
+  private static Auth0JwtTokenResolver newResolver(JwksKeyProvider keyProvider) {
+    return Auth0JwtTokenResolver.builder().keyProvider(keyProvider).build();
   }
 }
