@@ -3,6 +3,7 @@ package io.scalecube.security.vault;
 import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.apache.commons.lang3.RandomStringUtils.secure;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -149,6 +150,48 @@ public class VaultServiceTokenTests {
     assertNotNull(jwtToken, "jwtToken");
     assertTrue(jwtToken.header().size() > 0, "jwtToken.header: " + jwtToken.header());
     assertTrue(jwtToken.payload().size() > 0, "jwtToken.payload: " + jwtToken.payload());
+  }
+
+  @Test
+  void testGetServiceTokenWithAnyPermissionChars(VaultEnvironment vaultEnvironment)
+      throws Exception {
+    final var now = System.currentTimeMillis();
+    final var serviceRole = "role-" + now;
+    // '?' at each byte offset mod 3 yields '_' in base64url, which vault cannot decode
+    final var permissions = List.of("read", "???");
+
+    VaultServiceRolesInstaller.builder()
+        .vaultAddress(vaultEnvironment.vaultAddr())
+        .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
+        .keyNameSupplier(() -> "key-" + now)
+        .roleNameBuilder(role -> role)
+        .serviceRolesSources(
+            List.of(
+                () ->
+                    new ServiceRoles()
+                        .roles(List.of(new Role().role(serviceRole).permissions(permissions)))))
+        .build()
+        .install();
+
+    final var serviceToken =
+        VaultServiceTokenSupplier.builder()
+            .vaultAddress(vaultEnvironment.vaultAddr())
+            .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
+            .serviceRole(serviceRole)
+            .serviceTokenNameBuilder((role, tags) -> role)
+            .build()
+            .getToken(Map.of())
+            .get(3, TimeUnit.SECONDS);
+
+    final var jwtToken =
+        Auth0JwtTokenResolver.builder()
+            .keyProvider(JwksKeyProvider.builder().jwksUri(vaultEnvironment.jwksUri()).build())
+            .build()
+            .resolveToken(serviceToken)
+            .get(3, TimeUnit.SECONDS);
+
+    assertEquals(serviceRole, jwtToken.payload().get("role"));
+    assertEquals("read,???", jwtToken.payload().get("permissions"));
   }
 
   private static String toQualifiedName(String role, Map<String, String> tags) {

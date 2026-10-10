@@ -188,7 +188,8 @@ public class VaultServiceRolesInstaller {
   }
 
   private static String createTemplate(String roleName, List<String> permissions) {
-    return Base64.getUrlEncoder()
+    // Vault decodes template with standard base64 (not url-safe)
+    return Base64.getEncoder()
         .encodeToString(
             Json.object()
                 .add("role", roleName)

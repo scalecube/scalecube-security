@@ -8,6 +8,14 @@ of HashiCorp Vault [identity tokens](https://developer.hashicorp.com/vault/docs/
 | `scalecube-security-jwt` | `Auth0JwtTokenResolver`, `JwksKeyProvider`, `JwtToken` |
 | `scalecube-security-vault` | `VaultServiceRolesInstaller`, `VaultServiceTokenSupplier` |
 
+```xml
+<dependency>
+  <groupId>io.scalecube</groupId>
+  <artifactId>scalecube-security-jwt</artifactId> <!-- or scalecube-security-vault -->
+  <version>${scalecube-security.version}</version>
+</dependency>
+```
+
 ## JWT verification
 
 ```java
@@ -36,10 +44,19 @@ configured, `iss` and `aud`. On success it returns the token header and claims a
 
 ### Key caching
 
-`JwksKeyProvider` caches the whole key set for `keyTtl` (default 60s). When a token's `kid` is not
-in the cache, the key set is fetched again, at most once per `minRefreshInterval` (default 5s).
-Within that interval an unknown `kid` fails straight away, without a remote call. This means
-tokens with made-up `kid` values cannot flood the JWKS endpoint.
+`JwksKeyProvider` caches the whole key set for `keyTtl` (in millis, default 60000). The key set is
+fetched again when a token's `kid` is not in the cache, or when the cached key set has expired.
+Fetches happen on the calling thread, at most once per `minRefreshInterval` (default 5s). Callers
+that need a key during a fetch wait for it to finish. Within that interval, an unknown `kid` fails
+straight away without a remote call, so tokens with made-up `kid` values cannot flood the JWKS
+endpoint.
+
+| Builder setting | Default |
+|---|---|
+| `connectTimeout`, `requestTimeout` | `10s` |
+| `keyTtl` | `60000` (millis) |
+| `minRefreshInterval` | `5s` |
+| `httpClient` | new `HttpClient` with `connectTimeout` |
 
 Only RSA signing keys (`kty: RSA`, `use: sig` or no `use`) are taken from the key set.
 
@@ -57,8 +74,15 @@ for transient errors that are worth retrying:
 
 A service gets a signed token from Vault for its *service role*. Other services verify it with
 `Auth0JwtTokenResolver`, pointed at Vault's JWKS endpoint
-`<vault-address>/v1/identity/oidc/.well-known/keys`. The token carries two claims: `role`, and
-`permissions` (a comma-separated list).
+`<vault-address>/v1/identity/oidc/.well-known/keys` (no Vault token needed). Besides the standard
+claims, the token carries `role` and `permissions` (a comma-separated list).
+
+The Vault token passed in `vaultTokenSupplier` needs a policy that allows:
+
+- for the installer: `create`/`update` on `identity/oidc/key/<key>` and `identity/oidc/role/<role>`;
+- for the token supplier: `read` on `identity/oidc/token/<role>`. Vault issues identity tokens
+  only to tokens that belong to an identity entity, i.e. obtained through an auth method login
+  (Kubernetes, AppRole, userpass, ...), not the root token.
 
 ### Installing service roles
 
