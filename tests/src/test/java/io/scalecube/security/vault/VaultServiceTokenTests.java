@@ -1,9 +1,9 @@
 package io.scalecube.security.vault;
 
-import static io.scalecube.security.environment.VaultEnvironment.getRootCause;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -41,9 +41,7 @@ public class VaultServiceTokenTests {
       serviceTokenSupplier.getToken(Collections.emptyMap()).get(3, TimeUnit.SECONDS);
       fail("Exception expected");
     } catch (ExecutionException e) {
-      final var ex = getRootCause(e);
-      assertNotNull(ex);
-      assertTrue(ex.getMessage().startsWith("Failed to get service token, status=403"));
+      assertVaultError(e, 403);
     }
   }
 
@@ -63,9 +61,7 @@ public class VaultServiceTokenTests {
       serviceTokenSupplier.getToken(Collections.emptyMap()).get(3, TimeUnit.SECONDS);
       fail("Exception expected");
     } catch (ExecutionException e) {
-      final var ex = getRootCause(e);
-      assertNotNull(ex);
-      assertTrue(ex.getMessage().startsWith("Failed to get service token, status=400"));
+      assertVaultError(e, 400);
     }
   }
 
@@ -105,9 +101,7 @@ public class VaultServiceTokenTests {
       serviceTokenSupplier.getToken(Collections.emptyMap()).get(3, TimeUnit.SECONDS);
       fail("Exception expected");
     } catch (ExecutionException e) {
-      final var ex = getRootCause(e);
-      assertNotNull(ex);
-      assertTrue(ex.getMessage().startsWith("Failed to get service token, status=400"));
+      assertVaultError(e, 400);
     }
   }
 
@@ -157,11 +151,14 @@ public class VaultServiceTokenTests {
       throws Exception {
     final var now = System.currentTimeMillis();
     final var serviceRole = "role-" + now;
-    // '?' at each byte offset mod 3 yields '_' in base64url, which vault cannot decode
-    final var permissions = List.of("read", "???");
+    // '???' broke base64url encoding of template; '*', quotes, backslash and non-ascii must be
+    // escaped in template json
+    final var permissions = List.of("read", "???", "orders:*", "say \"hi\"", "a\\b", "zażółć");
+    // trailing slash must not produce '//v1' (non-canonical paths are rejected by vault 2.x)
+    final var vaultAddress = vaultEnvironment.vaultAddr() + "/";
 
     VaultServiceRolesInstaller.builder()
-        .vaultAddress(vaultEnvironment.vaultAddr())
+        .vaultAddress(vaultAddress)
         .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
         .keyNameSupplier(() -> "key-" + now)
         .roleNameBuilder(role -> role)
@@ -175,7 +172,7 @@ public class VaultServiceTokenTests {
 
     final var serviceToken =
         VaultServiceTokenSupplier.builder()
-            .vaultAddress(vaultEnvironment.vaultAddr())
+            .vaultAddress(vaultAddress)
             .vaultTokenSupplier(() -> completedFuture(vaultEnvironment.login()))
             .serviceRole(serviceRole)
             .serviceTokenNameBuilder((role, tags) -> role)
@@ -191,7 +188,13 @@ public class VaultServiceTokenTests {
             .get(3, TimeUnit.SECONDS);
 
     assertEquals(serviceRole, jwtToken.payload().get("role"));
-    assertEquals("read,???", jwtToken.payload().get("permissions"));
+    assertEquals(String.join(",", permissions), jwtToken.payload().get("permissions"));
+  }
+
+  private static void assertVaultError(ExecutionException e, int statusCode) {
+    final var ex = assertInstanceOf(VaultRequestException.class, e.getCause());
+    assertEquals(statusCode, ex.statusCode(), ex.getMessage());
+    assertFalse(ex.errors().isEmpty(), ex.getMessage());
   }
 
   private static String toQualifiedName(String role, Map<String, String> tags) {

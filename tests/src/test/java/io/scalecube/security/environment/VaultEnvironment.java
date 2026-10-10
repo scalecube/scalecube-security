@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.vault.VaultContainer;
 
 public class VaultEnvironment implements AutoCloseable {
@@ -18,8 +19,12 @@ public class VaultEnvironment implements AutoCloseable {
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
   private static final int PORT = 8200;
 
+  // Override to run against another vault version, e.g. -Dvault.image=hashicorp/vault:1.13.13
+  private static final String VAULT_IMAGE =
+      System.getProperty("vault.image", "hashicorp/vault:2.1.2");
+
   private final GenericContainer vault =
-      new VaultContainer("vault:1.4.0")
+      new VaultContainer(DockerImageName.parse(VAULT_IMAGE))
           .withVaultToken(VAULT_TOKEN)
           .waitingFor(new LogMessageWaitStrategy().withRegEx("^.*Vault server started!.*$"));
 
@@ -163,21 +168,26 @@ public class VaultEnvironment implements AutoCloseable {
   public String createIdentityRole(String keyName) {
     String roleName = secure().nextAlphabetic(10);
 
-    int status;
+    RestResponse response;
     try {
-      status =
+      response =
           new Rest()
               .header(VAULT_TOKEN_HEADER, VAULT_TOKEN)
               .url(oidcRoleUrl(roleName))
-              .body(("{\"key\":\"" + keyName + "\",\"ttl\": \"" + "1h" + "\"}").getBytes())
-              .post()
-              .getStatus();
+              // ttl must not exceed key's verification_ttl (enforced by vault since 1.x)
+              .body(("{\"key\":\"" + keyName + "\",\"ttl\": \"" + "1m" + "\"}").getBytes())
+              .post();
     } catch (RestException e) {
       throw new RuntimeException(e);
     }
 
+    final var status = response.getStatus();
     if (status != 200 && status != 204) {
-      throw new IllegalStateException("Unexpected status code on oidc/role creation: " + status);
+      throw new IllegalStateException(
+          "Unexpected status code on oidc/role creation: "
+              + status
+              + ", body: "
+              + new String(response.getBody()));
     }
     return roleName;
   }
