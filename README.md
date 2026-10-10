@@ -158,9 +158,11 @@ Both classes call the [Vault HTTP API](https://developer.hashicorp.com/vault/api
 - `200` and `204` are success. Any other status fails with `VaultRequestException`, which carries
   the status code and Vault's error messages.
 - Redirects (`307` from a standby node, when request forwarding is off) are followed, keeping the
-  method and body. The JDK client never follows a redirect from `https` to `http`.
+  method, body and Vault token, to whatever host the Vault node names (its `api_addr`). The JDK
+  client never follows a redirect from `https` to `http`.
 - A trailing `/` in `vaultAddress` is ignored, and an address with a path prefix
-  (`https://host/vault`) is supported. Key and role names must not contain `/` or end with `.`.
+  (`https://host/vault`) is supported; a query or fragment is rejected. Key and role names must
+  not contain `/` or end with `.`.
 - No retries: retrying is up to the caller.
 
 | Builder setting (both classes) | Default                                                     |
@@ -171,18 +173,12 @@ Both classes call the [Vault HTTP API](https://developer.hashicorp.com/vault/api
 
 ### Supported Vault versions
 
-Compatibility is guaranteed for two versions, both run by CI on every push (see
-`.github/workflows/branch-ci.yml`):
-
-| Vault  | Why                                                                                                                              |
-|--------|----------------------------------------------------------------------------------------------------------------------------------|
-| 1.19.5 | oldest release still [supported by HashiCorp](https://developer.hashicorp.com/vault/docs/enterprise/lts) (LTS, until April 2027) |
-| 2.1.2  | latest release                                                                                                                   |
-
-When a version leaves HashiCorp support it is dropped, and the latest entry moves with new
-releases. CI also runs `hashicorp/vault:latest` without failing the build, as an early warning.
-Other versions are likely to work (the integration tests also pass on 1.4 and 1.13) but are not
-guaranteed.
+Compatibility is guaranteed for two Vault versions: the oldest release still
+[supported by HashiCorp](https://developer.hashicorp.com/vault/docs/enterprise/lts), and the
+latest release. The exact versions are the CI matrix in `.github/workflows/branch-ci.yml`, run on
+every push. When a version leaves HashiCorp support it is dropped, and the latest entry moves with
+new releases. CI also runs `hashicorp/vault:latest` without failing the build, as an early warning.
+Other versions are likely to work but are not guaranteed.
 
 To run the integration tests against a given Vault version:
 `mvn verify -Dvault.image=hashicorp/vault:<version>` (default: the latest guaranteed version).

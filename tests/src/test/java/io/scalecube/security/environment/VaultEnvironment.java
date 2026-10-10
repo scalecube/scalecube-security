@@ -19,7 +19,8 @@ public class VaultEnvironment implements AutoCloseable {
   private static final String VAULT_TOKEN_HEADER = "X-Vault-Token";
   private static final int PORT = 8200;
 
-  // Override to run against another vault version, e.g. -Dvault.image=hashicorp/vault:1.13.13
+  // Default is the latest guaranteed version from the CI matrix (.github/workflows/branch-ci.yml),
+  // override to run against another vault version: -Dvault.image=hashicorp/vault:<version>
   private static final String VAULT_IMAGE =
       System.getProperty("vault.image", "hashicorp/vault:2.1.2");
 

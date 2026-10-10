@@ -158,7 +158,9 @@ class VaultClient {
     }
     final var uri = URI.create(address);
     if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
-        || uri.getHost() == null) {
+        || uri.getHost() == null
+        || uri.getRawQuery() != null
+        || uri.getRawFragment() != null) {
       throw new IllegalArgumentException("Invalid vault address: " + vaultAddress);
     }
     return address;

@@ -13,8 +13,9 @@ jobs:
   build:
     name: Branch CI (vault ${{ matrix.vault-image }})
     runs-on: ubuntu-latest
-    # Guaranteed vault versions: oldest supported by HashiCorp, and latest. Keep in sync with
-    # README.md. Non-blocking 'latest' gives early warning about new vault releases.
+    # Guaranteed vault versions (single source of truth, policy in README.md): oldest supported by
+    # HashiCorp, and latest; the latest one is also the default in VaultEnvironment. Non-blocking
+    # 'latest' gives early warning about new vault releases.
     strategy:
       fail-fast: false
       matrix:

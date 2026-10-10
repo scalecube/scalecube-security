@@ -3,6 +3,7 @@ package io.scalecube.security.vault;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.File;
@@ -18,10 +19,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.StringJoiner;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -105,14 +108,14 @@ public class VaultServiceRolesInstaller {
     }
 
     final var keyName = keyNameSupplier.get();
+    final var cancelled = new AtomicBoolean();
     final var installation =
         vaultTokenSupplier
             .get()
             .thenCompose(
                 token -> {
                   CompletableFuture<?> future =
-                      vaultClient
-                          .post(token, keyBody(), "identity", "oidc", "key", keyName)
+                      post(cancelled, token, keyBody(), "identity", "oidc", "key", keyName)
                           .thenRun(() -> LOGGER.debug("Vault identity key: {}", keyName));
 
                   for (var role : serviceRoles.roles) {
@@ -121,7 +124,8 @@ public class VaultServiceRolesInstaller {
                         future
                             .thenCompose(
                                 v ->
-                                    vaultClient.post(
+                                    post(
+                                        cancelled,
                                         token,
                                         roleBody(keyName, role.role, role.permissions),
                                         "identity",
@@ -139,7 +143,8 @@ public class VaultServiceRolesInstaller {
     } catch (ExecutionException e) {
       throw new RuntimeException("Failed to install service roles", e.getCause());
     } catch (TimeoutException e) {
-      // Stops remaining steps; an in-flight http request is bounded by requestTimeout instead
+      // Remaining requests are not sent; an in-flight one is bounded by requestTimeout
+      cancelled.set(true);
       installation.cancel(true);
       throw new RuntimeException("Failed to install service roles, timeout", e);
     } catch (InterruptedException e) {
@@ -157,6 +162,15 @@ public class VaultServiceRolesInstaller {
     }
 
     return null;
+  }
+
+  private CompletableFuture<JsonNode> post(
+      AtomicBoolean cancelled, String token, Object body, String... pathSegments) {
+    if (cancelled.get()) {
+      return CompletableFuture.failedFuture(
+          new CancellationException("Service roles installation cancelled"));
+    }
+    return vaultClient.post(token, body, pathSegments);
   }
 
   // https://developer.hashicorp.com/vault/api-docs/secret/identity/tokens#create-a-named-key

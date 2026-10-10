@@ -136,6 +136,8 @@ public class VaultClientTests {
   void testInvalidAddress() {
     assertThrows(IllegalArgumentException.class, () -> newClient("localhost:8200"));
     assertThrows(IllegalArgumentException.class, () -> newClient("ftp://localhost:8200"));
+    assertThrows(IllegalArgumentException.class, () -> newClient(address() + "?a=b"));
+    assertThrows(IllegalArgumentException.class, () -> newClient(address() + "/vault#x"));
   }
 
   @Test
