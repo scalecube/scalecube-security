@@ -100,26 +100,12 @@ service role:
 
 ```java
 VaultServiceRolesInstaller.builder()
-    .
-
-vaultAddress("http://vault:8200")
-    .
-
-vaultTokenSupplier(() ->CompletableFuture.
-
-completedFuture(vaultToken))
-  .
-
-keyNameSupplier(() ->"identity-key")
-  .
-
-roleNameBuilder(role ->"my-service."+role)
-  .
-
-build()
-    .
-
-install();
+    .vaultAddress("http://vault:8200")
+    .vaultTokenSupplier(() -> CompletableFuture.completedFuture(vaultToken))
+    .keyNameSupplier(() -> "identity-key")
+    .roleNameBuilder(role -> "my-service." + role)
+    .build()
+    .install();
 ```
 
 Service roles are read from the first `serviceRolesSources` entry that returns a result. The
@@ -149,13 +135,13 @@ If `vaultAddress` is empty, `none` or `null` (the string), installation is skipp
 
 ```java
 CompletableFuture<String> serviceToken =
-  VaultServiceTokenSupplier.builder()
-    .vaultAddress("http://vault:8200")
-    .vaultTokenSupplier(() -> CompletableFuture.completedFuture(vaultToken))
-    .serviceRole("reader")
-    .serviceTokenNameBuilder((role, tags) -> "my-service." + role)
-    .build()
-    .getToken(Map.of());
+    VaultServiceTokenSupplier.builder()
+        .vaultAddress("http://vault:8200")
+        .vaultTokenSupplier(() -> CompletableFuture.completedFuture(vaultToken))
+        .serviceRole("reader")
+        .serviceTokenNameBuilder((role, tags) -> "my-service." + role)
+        .build()
+        .getToken(Map.of());
 ```
 
 `serviceTokenNameBuilder` must produce the same Vault role name as the installer's
