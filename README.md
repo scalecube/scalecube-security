@@ -158,7 +158,7 @@ Both classes call the [Vault HTTP API](https://developer.hashicorp.com/vault/api
 - `200` and `204` are success. Any other status fails with `VaultRequestException`, which carries
   the status code and Vault's error messages.
 - Redirects (`307` from a standby node, when request forwarding is off) are followed, keeping the
-  method and body; never from `https` to `http`.
+  method and body. The JDK client never follows a redirect from `https` to `http`.
 - A trailing `/` in `vaultAddress` is ignored, and an address with a path prefix
   (`https://host/vault`) is supported. Key and role names must not contain `/` or end with `.`.
 - No retries: retrying is up to the caller.

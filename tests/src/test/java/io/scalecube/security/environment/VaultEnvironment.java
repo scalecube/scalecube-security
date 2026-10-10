@@ -150,7 +150,7 @@ public class VaultEnvironment implements AutoCloseable {
                           + "\"verification_ttl\": \""
                           + "1m"
                           + "\", "
-                          + "\"allowed_client_ids\": \"*\", "
+                          + "\"allowed_client_ids\": [\"*\"], "
                           + "\"algorithm\": \"RS256\"}")
                       .getBytes())
               .post()

@@ -30,9 +30,10 @@ import java.util.concurrent.CompletableFuture;
  *       (required by Vault Proxy with {@code require_request_header}, always sent by the official
  *       clients);
  *   <li>{@code 200} and {@code 204} are success, anything else is {@link VaultRequestException}
- *       with the messages from {@code {"errors": [...]}};
+ *       with the messages from {@code {"errors": [...]}} (also thrown for a success response with
+ *       invalid json);
  *   <li>redirects (e.g. {@code 307} from a standby node when request forwarding is off) are
- *       followed with method and body preserved, never from https to http;
+ *       followed with method and body preserved; the JDK client never follows https to http;
  *   <li>request paths are canonical: no empty, {@code .} or {@code ..} segments, no segment ending
  *       with a period.
  * </ul>
@@ -66,7 +67,7 @@ class VaultClient {
   }
 
   CompletableFuture<JsonNode> get(String vaultToken, String... pathSegments) {
-    return send(newRequest(vaultToken, pathSegments).GET(), "GET", pathSegments);
+    return send(newRequest(vaultToken, pathSegments).GET().build());
   }
 
   CompletableFuture<JsonNode> post(String vaultToken, Object body, String... pathSegments) {
@@ -79,9 +80,8 @@ class VaultClient {
     return send(
         newRequest(vaultToken, pathSegments)
             .header("Content-Type", "application/json")
-            .POST(BodyPublishers.ofString(json, StandardCharsets.UTF_8)),
-        "POST",
-        pathSegments);
+            .POST(BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+            .build());
   }
 
   private HttpRequest.Builder newRequest(String vaultToken, String... pathSegments) {
@@ -91,11 +91,11 @@ class VaultClient {
         .header(VAULT_REQUEST_HEADER, "true");
   }
 
-  private CompletableFuture<JsonNode> send(
-      HttpRequest.Builder request, String method, String... pathSegments) {
+  private CompletableFuture<JsonNode> send(HttpRequest request) {
+    final var description = request.method() + " " + request.uri().getRawPath();
     return httpClient
-        .sendAsync(request.build(), BodyHandlers.ofString(StandardCharsets.UTF_8))
-        .thenApply(response -> toJson(response, method + " /v1" + toPath(pathSegments)));
+        .sendAsync(request, BodyHandlers.ofString(StandardCharsets.UTF_8))
+        .thenApply(response -> toJson(response, description));
   }
 
   private static JsonNode toJson(HttpResponse<String> response, String request) {

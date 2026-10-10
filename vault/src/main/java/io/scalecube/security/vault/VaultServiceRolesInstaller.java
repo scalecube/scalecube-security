@@ -139,6 +139,7 @@ public class VaultServiceRolesInstaller {
     } catch (ExecutionException e) {
       throw new RuntimeException("Failed to install service roles", e.getCause());
     } catch (TimeoutException e) {
+      // Stops remaining steps; an in-flight http request is bounded by requestTimeout instead
       installation.cancel(true);
       throw new RuntimeException("Failed to install service roles, timeout", e);
     } catch (InterruptedException e) {
